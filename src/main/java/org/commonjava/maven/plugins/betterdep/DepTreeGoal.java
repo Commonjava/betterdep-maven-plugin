@@ -1,6 +1,7 @@
 package org.commonjava.maven.plugins.betterdep;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -8,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Level;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Dependency;
@@ -63,6 +65,9 @@ public class DepTreeGoal
 
     @Parameter( defaultValue = "${session}", readonly = true, required = true )
     private MavenSession session;
+
+    @Parameter( property = "output" )
+    private File output;
 
     @Override
     public void execute()
@@ -199,12 +204,22 @@ public class DepTreeGoal
             final String depTree = carto.getRenderer()
                                         .depTree( projectRef, filter, scope, collapseTransitives );
 
-            // TODO: file option
-            getLog().info( depTree );
+            if ( output == null )
+            {
+                getLog().info( depTree );
+            }
+            else
+            {
+                FileUtils.write( output, depTree );
+            }
         }
         catch ( final CartoDataException e )
         {
             throw new MojoExecutionException( "Failed to render dependency tree: " + e.getMessage(), e );
+        }
+        catch ( final IOException e )
+        {
+            throw new MojoExecutionException( "Failed to render dependency tree to: " + output + ". Reason: " + e.getMessage(), e );
         }
     }
 
