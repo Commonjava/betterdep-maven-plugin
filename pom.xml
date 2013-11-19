@@ -1,5 +1,4 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   
   <parent>
@@ -10,7 +9,7 @@
 
   <groupId>org.commonjava.maven.plugins</groupId>
   <artifactId>betterdep-maven-plugin</artifactId>
-  <version>0.1-SNAPSHOT</version>
+  <version>0.1</version>
   <packaging>maven-plugin</packaging>
 
   <name>betterdep-maven-plugin</name>
@@ -33,35 +32,35 @@
       <dependency>
         <groupId>org.commonjava.maven.cartographer</groupId>
         <artifactId>cartographer</artifactId>
-        <version>0.4.0-SNAPSHOT</version>
+        <version>0.3.1</version>
       </dependency>
       
       <dependency>
         <groupId>org.commonjava.maven.galley</groupId>
         <artifactId>galley-maven</artifactId>
-        <version>${galley-version}</version>
+        <version>0.3.1</version>
       </dependency>
       <dependency>
         <groupId>org.commonjava.maven.galley</groupId>
         <artifactId>galley-core</artifactId>
-        <version>${galley-version}</version>
+        <version>0.3.1</version>
       </dependency>
       <dependency>
         <groupId>org.commonjava.maven.galley</groupId>
         <artifactId>galley-transport-httpclient</artifactId>
-        <version>${galley-version}</version>
+        <version>0.3.1</version>
       </dependency>
       <dependency>
         <groupId>org.commonjava.maven.galley</groupId>
         <artifactId>galley-transport-filearc</artifactId>
-        <version>${galley-version}</version>
+        <version>0.3.1</version>
       </dependency>
       
       
       <dependency>
         <groupId>org.commonjava.maven.atlas</groupId>
         <artifactId>atlas-driver-neo4j-embedded</artifactId>
-        <version>0.9.3-SNAPSHOT</version>
+        <version>0.9.3</version>
       </dependency>
       
       <dependency>
