@@ -6,7 +6,10 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.artifact.repository.ArtifactRepositoryPolicy;
@@ -38,37 +41,40 @@ public class MavenLocationExpander
 
     private final Logger logger = new Logger( getClass() );
 
-    public MavenLocationExpander( final MavenProject project, final ArtifactRepository localRepository )
+    public MavenLocationExpander( final List<MavenProject> projects, final ArtifactRepository localRepository )
         throws MalformedURLException, URISyntaxException
     {
-        final List<ArtifactRepository> repositories = project.getRemoteArtifactRepositories();
-        final List<Location> locs = new ArrayList<Location>( repositories.size() );
-        final List<URI> uris = new ArrayList<URI>( repositories.size() );
+        final Set<Location> locs = new LinkedHashSet<Location>();
+        final Set<URI> uris = new HashSet<URI>();
 
-        for ( final ArtifactRepository repo : repositories )
+        for ( final MavenProject project : projects )
         {
-            // TODO: Authentication via memory password manager.
-            final String url = repo.getUrl();
-            uris.add( new URI( url ) );
+            final List<ArtifactRepository> repositories = project.getRemoteArtifactRepositories();
+            for ( final ArtifactRepository repo : repositories )
+            {
+                // TODO: Authentication via memory password manager.
+                final String url = repo.getUrl();
+                uris.add( new URI( url ) );
 
-            if ( url.startsWith( "file:" ) )
-            {
-                locs.add( new SimpleLocation( url ) );
-            }
-            else
-            {
-                final ArtifactRepositoryPolicy releases = repo.getReleases();
-                final ArtifactRepositoryPolicy snapshots = repo.getSnapshots();
-                locs.add( new SimpleHttpLocation( url, url, snapshots == null ? false : snapshots.isEnabled(), releases == null ? true
-                                : releases.isEnabled(), true, false, -1, null ) );
+                if ( url.startsWith( "file:" ) )
+                {
+                    locs.add( new SimpleLocation( url ) );
+                }
+                else
+                {
+                    final ArtifactRepositoryPolicy releases = repo.getReleases();
+                    final ArtifactRepositoryPolicy snapshots = repo.getSnapshots();
+                    locs.add( new SimpleHttpLocation( url, url, snapshots == null ? false : snapshots.isEnabled(), releases == null ? true
+                                    : releases.isEnabled(), true, false, -1, null ) );
+                }
             }
         }
 
         locs.add( new SimpleLocation( new File( localRepository.getBasedir() ).toURI()
                                                                               .toString() ) );
 
-        this.locationUris = uris;
-        this.locations = locs;
+        this.locationUris = new ArrayList<URI>( uris );
+        this.locations = new ArrayList<Location>( locs );
     }
 
     @Override

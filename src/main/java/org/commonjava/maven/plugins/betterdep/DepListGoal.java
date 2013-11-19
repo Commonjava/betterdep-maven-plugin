@@ -15,8 +15,8 @@ import org.commonjava.maven.atlas.ident.ref.ProjectVersionRef;
 import org.commonjava.maven.cartographer.data.CartoDataException;
 import org.commonjava.util.logging.Log4jUtil;
 
-@Mojo( name = "tree", requiresProject = true, aggregator = true )
-public class DepTreeGoal
+@Mojo( name = "list", requiresProject = true, aggregator = true )
+public class DepListGoal
     extends AbstractDepgraphGoal
 {
 
@@ -31,7 +31,7 @@ public class DepTreeGoal
     {
         if ( HAS_RUN )
         {
-            getLog().info( "Dependency tree has already run. Skipping." );
+            getLog().info( "Dependency list has already run. Skipping." );
             return;
         }
 
@@ -39,7 +39,7 @@ public class DepTreeGoal
 
         initDepgraph();
 
-        getLog().info( "Printing deptree for: " + project.getId() + "..." );
+        getLog().info( "Printing deplist for: " + project.getName() + "..." );
         try
         {
             final Map<String, Set<ProjectVersionRef>> labels = getLabelsMap();
@@ -48,9 +48,9 @@ public class DepTreeGoal
             for ( final ProjectVersionRef root : roots )
             {
                 final String printed = carto.getRenderer()
-                                            .depTree( root, filter, scope, dedupe, labels );
+                                            .depList( root, filter, scope, dedupe, labels );
 
-                sb.append( "\n\n\nDependency tree for: " )
+                sb.append( "\n\n\nDependency list for: " )
                   .append( root )
                   .append( ": \n\n" )
                   .append( printed );
@@ -67,11 +67,11 @@ public class DepTreeGoal
         }
         catch ( final CartoDataException e )
         {
-            throw new MojoExecutionException( "Failed to render dependency tree: " + e.getMessage(), e );
+            throw new MojoExecutionException( "Failed to render dependency list: " + e.getMessage(), e );
         }
         catch ( final IOException e )
         {
-            throw new MojoExecutionException( "Failed to render dependency tree to: " + output + ". Reason: " + e.getMessage(), e );
+            throw new MojoExecutionException( "Failed to render dependency list to: " + output + ". Reason: " + e.getMessage(), e );
         }
 
         HAS_RUN = true;
