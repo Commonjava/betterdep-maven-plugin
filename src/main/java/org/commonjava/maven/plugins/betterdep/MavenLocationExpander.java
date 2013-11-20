@@ -47,6 +47,9 @@ public class MavenLocationExpander
         final Set<Location> locs = new LinkedHashSet<Location>();
         final Set<URI> uris = new HashSet<URI>();
 
+        locs.add( new SimpleLocation( new File( localRepository.getBasedir() ).toURI()
+                                                                              .toString() ) );
+
         for ( final MavenProject project : projects )
         {
             final List<ArtifactRepository> repositories = project.getRemoteArtifactRepositories();
@@ -69,9 +72,6 @@ public class MavenLocationExpander
                 }
             }
         }
-
-        locs.add( new SimpleLocation( new File( localRepository.getBasedir() ).toURI()
-                                                                              .toString() ) );
 
         this.locationUris = new ArrayList<URI>( uris );
         this.locations = new ArrayList<Location>( locs );
@@ -217,6 +217,15 @@ public class MavenLocationExpander
                 catch ( final URISyntaxException e )
                 {
                     throw new CartoDataException( "Failed to construct URI from: '%s'. Reason: %s", e, LOCAL_URI, e.getMessage() );
+                }
+
+                try
+                {
+                    ws.addActiveSource( new URI( EXPANSION_TARGET ) );
+                }
+                catch ( final URISyntaxException e )
+                {
+                    throw new CartoDataException( "Failed to construct URI from: '%s'. Reason: %s", e, EXPANSION_TARGET, e.getMessage() );
                 }
 
                 ws.addActiveSources( locationUris );

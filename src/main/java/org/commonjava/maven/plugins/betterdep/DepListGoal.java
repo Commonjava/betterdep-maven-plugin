@@ -15,7 +15,7 @@ import org.commonjava.maven.atlas.ident.ref.ProjectVersionRef;
 import org.commonjava.maven.cartographer.data.CartoDataException;
 import org.commonjava.util.logging.Log4jUtil;
 
-@Mojo( name = "list", requiresProject = true, aggregator = true )
+@Mojo( name = "list", requiresProject = true, aggregator = true, threadSafe = true )
 public class DepListGoal
     extends AbstractDepgraphGoal
 {
@@ -35,11 +35,11 @@ public class DepListGoal
             return;
         }
 
+        HAS_RUN = true;
+
         Log4jUtil.configure( getLog().isDebugEnabled() ? Level.INFO : Level.WARN, "%-5p [%t]: %m%n" );
 
         initDepgraph();
-
-        getLog().info( "Printing deplist for: " + project.getName() + "..." );
         try
         {
             final Map<String, Set<ProjectVersionRef>> labels = getLabelsMap();
@@ -48,7 +48,7 @@ public class DepListGoal
             for ( final ProjectVersionRef root : roots )
             {
                 final String printed = carto.getRenderer()
-                                            .depList( root, filter, scope, dedupe, labels );
+                                            .depList( root, filter, scope, labels );
 
                 sb.append( "\n\n\nDependency list for: " )
                   .append( root )
@@ -73,7 +73,5 @@ public class DepListGoal
         {
             throw new MojoExecutionException( "Failed to render dependency list to: " + output + ". Reason: " + e.getMessage(), e );
         }
-
-        HAS_RUN = true;
     }
 }

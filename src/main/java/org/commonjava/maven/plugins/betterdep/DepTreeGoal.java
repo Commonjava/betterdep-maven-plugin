@@ -15,7 +15,7 @@ import org.commonjava.maven.atlas.ident.ref.ProjectVersionRef;
 import org.commonjava.maven.cartographer.data.CartoDataException;
 import org.commonjava.util.logging.Log4jUtil;
 
-@Mojo( name = "tree", requiresProject = true, aggregator = true )
+@Mojo( name = "tree", requiresProject = true, aggregator = true, threadSafe = true )
 public class DepTreeGoal
     extends AbstractDepgraphGoal
 {
@@ -35,11 +35,11 @@ public class DepTreeGoal
             return;
         }
 
+        HAS_RUN = true;
+
         Log4jUtil.configure( getLog().isDebugEnabled() ? Level.INFO : Level.WARN, "%-5p [%t]: %m%n" );
 
         initDepgraph();
-
-        getLog().info( "Printing deptree for: " + project.getId() + "..." );
         try
         {
             final Map<String, Set<ProjectVersionRef>> labels = getLabelsMap();
@@ -47,8 +47,13 @@ public class DepTreeGoal
             final StringBuilder sb = new StringBuilder();
             for ( final ProjectVersionRef root : roots )
             {
+                final Set<ProjectVersionRef> missing = carto.getDatabase()
+                                                            .getAllIncompleteSubgraphs();
+
+                final BetterDepRelationshipPrinter printer = new BetterDepRelationshipPrinter( missing );
+
                 final String printed = carto.getRenderer()
-                                            .depTree( root, filter, scope, dedupe, labels );
+                                            .depTree( root, filter, scope, dedupe, labels, printer );
 
                 sb.append( "\n\n\nDependency tree for: " )
                   .append( root )
@@ -73,7 +78,5 @@ public class DepTreeGoal
         {
             throw new MojoExecutionException( "Failed to render dependency tree to: " + output + ". Reason: " + e.getMessage(), e );
         }
-
-        HAS_RUN = true;
     }
 }

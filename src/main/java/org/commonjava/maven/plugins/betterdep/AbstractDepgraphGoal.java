@@ -22,6 +22,7 @@ import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.logging.console.ConsoleLogger;
+import org.commonjava.maven.atlas.graph.filter.DependencyFilter;
 import org.commonjava.maven.atlas.graph.filter.ProjectRelationshipFilter;
 import org.commonjava.maven.atlas.graph.rel.DependencyRelationship;
 import org.commonjava.maven.atlas.graph.rel.ParentRelationship;
@@ -37,7 +38,6 @@ import org.commonjava.maven.cartographer.data.CartoDataException;
 import org.commonjava.maven.cartographer.dto.GraphComposition;
 import org.commonjava.maven.cartographer.dto.GraphDescription;
 import org.commonjava.maven.cartographer.dto.ResolverRecipe;
-import org.commonjava.maven.cartographer.preset.MavenRuntimeFilter;
 import org.commonjava.maven.galley.model.SimpleLocation;
 
 public abstract class AbstractDepgraphGoal
@@ -60,7 +60,7 @@ public abstract class AbstractDepgraphGoal
 
     private Log log;
 
-    @Parameter( defaultValue = "test", required = true, property = "dep.scope" )
+    @Parameter( defaultValue = "runtime", required = true, property = "dep.scope" )
     protected DependencyScope scope;
 
     @Parameter( defaultValue = "true", required = true, property = "dep.dedupe" )
@@ -71,7 +71,7 @@ public abstract class AbstractDepgraphGoal
 
     protected Set<ProjectVersionRef> roots;
 
-    protected final ProjectRelationshipFilter filter = new MavenRuntimeFilter();
+    protected ProjectRelationshipFilter filter;
 
     protected static Cartographer carto;
 
@@ -161,6 +161,9 @@ public abstract class AbstractDepgraphGoal
 
         //        final ProjectVersionRef projectRef = new ProjectVersionRef( project.getGroupId(), project.getArtifactId(), project.getVersion() );
 
+        //        filter = new MavenRuntimeFilter();
+        filter = new DependencyFilter( scope );
+
         final GraphDescription graphDesc = new GraphDescription( filter, roots );
         final GraphComposition comp = new GraphComposition( null, Collections.singletonList( graphDesc ) );
         final ResolverRecipe recipe = new ResolverRecipe();
@@ -214,6 +217,7 @@ public abstract class AbstractDepgraphGoal
                 new CartographerBuilder( WORKSPACE_ID, resolverDir, 4, new FileNeo4jWorkspaceFactory( dbDir, true ) )
                                             .withLocationExpander( mavenLocations )
                                             .withSourceManager( mavenLocations )
+                                            .withDefaultTransports()
                                             .build();
             /* @formatter:on */
 
