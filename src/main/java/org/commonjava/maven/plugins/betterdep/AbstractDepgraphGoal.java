@@ -7,6 +7,7 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +16,7 @@ import java.util.Set;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Exclusion;
+import org.apache.maven.model.Profile;
 import org.apache.maven.monitor.logging.DefaultLog;
 import org.apache.maven.plugin.Mojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -22,12 +24,13 @@ import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.logging.console.ConsoleLogger;
-import org.commonjava.maven.atlas.graph.filter.DependencyFilter;
 import org.commonjava.maven.atlas.graph.filter.ProjectRelationshipFilter;
 import org.commonjava.maven.atlas.graph.rel.DependencyRelationship;
 import org.commonjava.maven.atlas.graph.rel.ParentRelationship;
 import org.commonjava.maven.atlas.graph.rel.ProjectRelationship;
 import org.commonjava.maven.atlas.graph.spi.neo4j.FileNeo4jWorkspaceFactory;
+import org.commonjava.maven.atlas.graph.util.RelationshipUtils;
+import org.commonjava.maven.atlas.graph.workspace.GraphWorkspace;
 import org.commonjava.maven.atlas.ident.DependencyScope;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.commonjava.maven.atlas.ident.ref.ProjectRef;
@@ -48,9 +51,6 @@ public abstract class AbstractDepgraphGoal
 
     @Parameter( defaultValue = "${reactorProjects}", readonly = true, required = true )
     private List<MavenProject> projects;
-
-    @Parameter( defaultValue = "${project}", readonly = true, required = true )
-    protected MavenProject project;
 
     @Parameter( defaultValue = "${project.build.directory}/dep/resolved", readonly = true, required = true )
     private File resolverDir;
@@ -73,6 +73,8 @@ public abstract class AbstractDepgraphGoal
 
     protected ProjectRelationshipFilter filter;
 
+    private Set<URI> profiles;
+
     protected static Cartographer carto;
 
     public AbstractDepgraphGoal()
@@ -90,9 +92,19 @@ public abstract class AbstractDepgraphGoal
 
         final List<ProjectRelationship<?>> rels = new ArrayList<ProjectRelationship<?>>();
         roots = new LinkedHashSet<ProjectVersionRef>();
+        profiles = new HashSet<URI>();
 
         for ( final MavenProject project : projects )
         {
+            final List<Profile> activeProfiles = project.getActiveProfiles();
+            if ( activeProfiles != null )
+            {
+                for ( final Profile profile : activeProfiles )
+                {
+                    profiles.add( RelationshipUtils.profileLocation( profile.getId() ) );
+                }
+            }
+
             final ProjectVersionRef projectRef = new ProjectVersionRef( project.getGroupId(), project.getArtifactId(), project.getVersion() );
             roots.add( projectRef );
 
@@ -148,7 +160,7 @@ public abstract class AbstractDepgraphGoal
             rels.add( new ParentRelationship( localUri, lastParent ) );
         }
 
-        getLog().info( "Storing direct relationships for: " + project.getId() + "..." );
+        getLog().info( "Storing direct relationships..." );
         try
         {
             carto.getDatabase()
@@ -162,7 +174,8 @@ public abstract class AbstractDepgraphGoal
         //        final ProjectVersionRef projectRef = new ProjectVersionRef( project.getGroupId(), project.getArtifactId(), project.getVersion() );
 
         //        filter = new MavenRuntimeFilter();
-        filter = new DependencyFilter( scope );
+        filter = new BetterDepFilter( scope );
+        //        filter = new DependencyFilter( scope );
 
         final GraphDescription graphDesc = new GraphDescription( filter, roots );
         final GraphComposition comp = new GraphComposition( null, Collections.singletonList( graphDesc ) );
@@ -172,7 +185,7 @@ public abstract class AbstractDepgraphGoal
         recipe.setWorkspaceId( WORKSPACE_ID );
         recipe.setSourceLocation( new SimpleLocation( MavenLocationExpander.EXPANSION_TARGET ) );
 
-        getLog().info( "Resolving depgraph for: " + project.getId() + "..." );
+        getLog().info( "Resolving depgraph(s)..." );
         try
         {
             carto.getResolver()
@@ -223,6 +236,14 @@ public abstract class AbstractDepgraphGoal
 
             carto.getDatabase()
                  .setCurrentWorkspace( WORKSPACE_ID );
+
+            final GraphWorkspace workspace = carto.getDatabase()
+                                                  .getCurrentWorkspace();
+
+            if ( profiles != null && !profiles.isEmpty() )
+            {
+                workspace.addActivePomLocations( profiles );
+            }
         }
         catch ( final CartoDataException e )
         {

@@ -47,8 +47,10 @@ public class DepListGoal
             final StringBuilder sb = new StringBuilder();
             for ( final ProjectVersionRef root : roots )
             {
+                final BetterDepRelationshipPrinter printer = new BetterDepRelationshipPrinter();
+
                 final String printed = carto.getRenderer()
-                                            .depList( root, filter, scope, labels );
+                                            .depList( root, filter, scope, labels, printer );
 
                 sb.append( "\n\n\nDependency list for: " )
                   .append( root )

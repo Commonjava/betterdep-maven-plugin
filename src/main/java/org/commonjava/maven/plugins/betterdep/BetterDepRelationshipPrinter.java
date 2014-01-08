@@ -9,6 +9,7 @@ import org.commonjava.maven.atlas.graph.rel.DependencyRelationship;
 import org.commonjava.maven.atlas.graph.rel.ProjectRelationship;
 import org.commonjava.maven.atlas.graph.rel.RelationshipType;
 import org.commonjava.maven.atlas.graph.traverse.print.StructureRelationshipPrinter;
+import org.commonjava.maven.atlas.ident.DependencyScope;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.commonjava.maven.atlas.ident.ref.ProjectVersionRef;
 
@@ -17,6 +18,11 @@ public class BetterDepRelationshipPrinter
 {
 
     private final Set<ProjectVersionRef> missing;
+
+    public BetterDepRelationshipPrinter()
+    {
+        missing = null;
+    }
 
     public BetterDepRelationshipPrinter( final Set<ProjectVersionRef> missing )
     {
@@ -47,16 +53,21 @@ public class BetterDepRelationshipPrinter
             targetArtifact = selectedTarget.asArtifactRef( targetArtifact.getTypeAndClassifier() );
         }
 
-        builder.append( targetArtifact );
-
         final Set<String> localLabels = new HashSet<String>();
 
+        String suffix = null;
         if ( type == RelationshipType.DEPENDENCY )
         {
             final DependencyRelationship dr = (DependencyRelationship) relationship;
-            builder.append( ':' )
-                   .append( dr.getScope()
-                              .name() );
+            if ( DependencyScope._import == dr.getScope() /*&& dr.isManaged() && "pom".equals( dr.getType() )*/)
+            {
+                localLabels.add( "BOM" );
+            }
+            else
+            {
+                suffix = ":" + dr.getScope()
+                                 .name();
+            }
 
             if ( dr.getTargetArtifact()
                    .isOptional() )
@@ -73,8 +84,38 @@ public class BetterDepRelationshipPrinter
             localLabels.add( type.name() );
         }
 
+        printProjectVersionRef( targetArtifact, builder, suffix, labels, localLabels );
+
+        if ( !target.equals( originalTarget ) )
+        {
+            builder.append( " [was: " )
+                   .append( originalTarget )
+                   .append( "]" );
+        }
+
+        if ( missing != null && missing.contains( target ) )
+        {
+            builder.append( '\n' );
+            indent( builder, depth + 1, indent );
+            builder.append( "???" );
+        }
+    }
+
+    @Override
+    public void printProjectVersionRef( final ProjectVersionRef targetArtifact, final StringBuilder builder, final String suffix,
+                                        final Map<String, Set<ProjectVersionRef>> labels, final Set<String> localLabels )
+    {
+        // the original could be an artifact ref!
+        final ProjectVersionRef target = targetArtifact.asProjectVersionRef();
+
+        builder.append( targetArtifact );
+        if ( suffix != null )
+        {
+            builder.append( suffix );
+        }
+
         boolean hasLabel = false;
-        if ( !localLabels.isEmpty() )
+        if ( localLabels != null && !localLabels.isEmpty() )
         {
             hasLabel = true;
             builder.append( " (" );
@@ -120,20 +161,6 @@ public class BetterDepRelationshipPrinter
         if ( hasLabel )
         {
             builder.append( ')' );
-        }
-
-        if ( !target.equals( originalTarget ) )
-        {
-            builder.append( " [was: " )
-                   .append( originalTarget )
-                   .append( "]" );
-        }
-
-        if ( missing.contains( target ) )
-        {
-            builder.append( '\n' );
-            indent( builder, depth + 1, indent );
-            builder.append( "???" );
         }
     }
 
