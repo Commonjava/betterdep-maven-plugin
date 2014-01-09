@@ -42,12 +42,14 @@ import org.commonjava.maven.cartographer.dto.GraphComposition;
 import org.commonjava.maven.cartographer.dto.GraphDescription;
 import org.commonjava.maven.cartographer.dto.ResolverRecipe;
 import org.commonjava.maven.galley.model.SimpleLocation;
+import org.commonjava.maven.plugins.betterdep.impl.BetterDepFilter;
+import org.commonjava.maven.plugins.betterdep.impl.MavenLocationExpander;
 
 public abstract class AbstractDepgraphGoal
     implements Mojo
 {
 
-    private static final String WORKSPACE_ID = "betterdep";
+    public static final String WORKSPACE_ID = "betterdep";
 
     @Parameter( defaultValue = "${reactorProjects}", readonly = true, required = true )
     private List<MavenProject> projects;
@@ -75,6 +77,8 @@ public abstract class AbstractDepgraphGoal
 
     private Set<URI> profiles;
 
+    protected GraphWorkspace workspace;
+
     protected static Cartographer carto;
 
     public AbstractDepgraphGoal()
@@ -82,12 +86,12 @@ public abstract class AbstractDepgraphGoal
         super();
     }
 
-    protected void initDepgraph()
+    protected void initDepgraph( final boolean useLocalRepo )
         throws MojoExecutionException
     {
         if ( carto == null )
         {
-            startCartographer();
+            startCartographer( useLocalRepo );
         }
 
         final List<ProjectRelationship<?>> rels = new ArrayList<ProjectRelationship<?>>();
@@ -160,11 +164,18 @@ public abstract class AbstractDepgraphGoal
             rels.add( new ParentRelationship( localUri, lastParent ) );
         }
 
+        if ( profiles != null && !profiles.isEmpty() )
+        {
+            workspace.addActivePomLocations( profiles );
+        }
+
         getLog().info( "Storing direct relationships..." );
         try
         {
-            carto.getDatabase()
-                 .storeRelationships( rels );
+            final Set<ProjectRelationship<?>> rejected = carto.getDatabase()
+                                                              .storeRelationships( rels );
+
+            getLog().info( "The following direct relationships were rejected: " + rejected );
         }
         catch ( final CartoDataException e )
         {
@@ -176,7 +187,11 @@ public abstract class AbstractDepgraphGoal
         //        filter = new MavenRuntimeFilter();
         filter = new BetterDepFilter( scope );
         //        filter = new DependencyFilter( scope );
+    }
 
+    protected void resolveDepgraph()
+        throws MojoExecutionException
+    {
         final GraphDescription graphDesc = new GraphDescription( filter, roots );
         final GraphComposition comp = new GraphComposition( null, Collections.singletonList( graphDesc ) );
         final ResolverRecipe recipe = new ResolverRecipe();
@@ -212,7 +227,7 @@ public abstract class AbstractDepgraphGoal
         return labels;
     }
 
-    private void startCartographer()
+    private void startCartographer( final boolean useLocalRepo )
         throws MojoExecutionException
     {
         getLog().info( "Starting cartographer..." );
@@ -224,7 +239,7 @@ public abstract class AbstractDepgraphGoal
             /* @formatter:off */
             // TODO: Create a proper cache provider that works with the maven local repository format.
             
-            final MavenLocationExpander mavenLocations = new MavenLocationExpander( projects, session.getLocalRepository() );
+            final MavenLocationExpander mavenLocations = new MavenLocationExpander( projects, useLocalRepo ? session.getLocalRepository() : null );
             
             carto =
                 new CartographerBuilder( WORKSPACE_ID, resolverDir, 4, new FileNeo4jWorkspaceFactory( dbDir, true ) )
@@ -237,13 +252,9 @@ public abstract class AbstractDepgraphGoal
             carto.getDatabase()
                  .setCurrentWorkspace( WORKSPACE_ID );
 
-            final GraphWorkspace workspace = carto.getDatabase()
-                                                  .getCurrentWorkspace();
+            workspace = carto.getDatabase()
+                             .getCurrentWorkspace();
 
-            if ( profiles != null && !profiles.isEmpty() )
-            {
-                workspace.addActivePomLocations( profiles );
-            }
         }
         catch ( final CartoDataException e )
         {

@@ -13,6 +13,7 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.commonjava.maven.atlas.ident.ref.ProjectVersionRef;
 import org.commonjava.maven.cartographer.data.CartoDataException;
+import org.commonjava.maven.plugins.betterdep.impl.BetterDepRelationshipPrinter;
 import org.commonjava.util.logging.Log4jUtil;
 
 @Mojo( name = "list", requiresProject = true, aggregator = true, threadSafe = true )
@@ -39,7 +40,8 @@ public class DepListGoal
 
         Log4jUtil.configure( getLog().isDebugEnabled() ? Level.INFO : Level.WARN, "%-5p [%t]: %m%n" );
 
-        initDepgraph();
+        initDepgraph( true );
+        resolveDepgraph();
         try
         {
             final Map<String, Set<ProjectVersionRef>> labels = getLabelsMap();

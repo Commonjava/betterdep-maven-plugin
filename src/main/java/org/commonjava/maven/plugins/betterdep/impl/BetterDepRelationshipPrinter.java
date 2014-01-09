@@ -1,4 +1,4 @@
-package org.commonjava.maven.plugins.betterdep;
+package org.commonjava.maven.plugins.betterdep.impl;
 
 import java.util.HashSet;
 import java.util.Map;

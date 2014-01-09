@@ -1,4 +1,4 @@
-package org.commonjava.maven.plugins.betterdep;
+package org.commonjava.maven.plugins.betterdep.impl;
 
 import java.io.File;
 import java.net.MalformedURLException;
@@ -47,8 +47,11 @@ public class MavenLocationExpander
         final Set<Location> locs = new LinkedHashSet<Location>();
         final Set<URI> uris = new HashSet<URI>();
 
-        locs.add( new SimpleLocation( new File( localRepository.getBasedir() ).toURI()
-                                                                              .toString() ) );
+        if ( localRepository != null )
+        {
+            locs.add( new SimpleLocation( new File( localRepository.getBasedir() ).toURI()
+                                                                                  .toString() ) );
+        }
 
         for ( final MavenProject project : projects )
         {
