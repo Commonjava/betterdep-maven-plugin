@@ -24,8 +24,8 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <atlasVersion>0.9.6-SNAPSHOT</atlasVersion>
-    <galleyVersion>0.3.2</galleyVersion>
+    <atlasVersion>0.9.6</atlasVersion>
+    <galleyVersion>0.3.3</galleyVersion>
   </properties>
 
   <dependencyManagement>
@@ -33,7 +33,7 @@
       <dependency>
         <groupId>org.commonjava.maven.cartographer</groupId>
         <artifactId>cartographer</artifactId>
-        <version>0.3.3</version>
+        <version>0.3.4</version>
       </dependency>
       
       <dependency>
