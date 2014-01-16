@@ -16,7 +16,7 @@ import org.commonjava.maven.cartographer.data.CartoDataException;
 import org.commonjava.maven.plugins.betterdep.impl.BetterDepRelationshipPrinter;
 import org.commonjava.util.logging.Log4jUtil;
 
-@Mojo( name = "list", requiresProject = true, aggregator = true, threadSafe = true )
+@Mojo( name = "list", aggregator = true, threadSafe = true )
 public class DepListGoal
     extends AbstractDepgraphGoal
 {

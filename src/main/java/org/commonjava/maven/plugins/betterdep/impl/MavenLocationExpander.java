@@ -13,7 +13,6 @@ import java.util.Set;
 
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.artifact.repository.ArtifactRepositoryPolicy;
-import org.apache.maven.project.MavenProject;
 import org.commonjava.maven.atlas.graph.workspace.GraphWorkspace;
 import org.commonjava.maven.cartographer.data.CartoDataException;
 import org.commonjava.maven.cartographer.discover.DiscoverySourceManager;
@@ -41,7 +40,8 @@ public class MavenLocationExpander
 
     private final Logger logger = new Logger( getClass() );
 
-    public MavenLocationExpander( final List<MavenProject> projects, final ArtifactRepository localRepository )
+    public MavenLocationExpander( final List<Location> customLocations, final List<ArtifactRepository> artifactRepositories,
+                                  final ArtifactRepository localRepository )
         throws MalformedURLException, URISyntaxException
     {
         final Set<Location> locs = new LinkedHashSet<Location>();
@@ -53,26 +53,27 @@ public class MavenLocationExpander
                                                                                   .toString() ) );
         }
 
-        for ( final MavenProject project : projects )
+        if ( customLocations != null )
         {
-            final List<ArtifactRepository> repositories = project.getRemoteArtifactRepositories();
-            for ( final ArtifactRepository repo : repositories )
-            {
-                // TODO: Authentication via memory password manager.
-                final String url = repo.getUrl();
-                uris.add( new URI( url ) );
+            locs.addAll( customLocations );
+        }
 
-                if ( url.startsWith( "file:" ) )
-                {
-                    locs.add( new SimpleLocation( url ) );
-                }
-                else
-                {
-                    final ArtifactRepositoryPolicy releases = repo.getReleases();
-                    final ArtifactRepositoryPolicy snapshots = repo.getSnapshots();
-                    locs.add( new SimpleHttpLocation( url, url, snapshots == null ? false : snapshots.isEnabled(), releases == null ? true
-                                    : releases.isEnabled(), true, false, -1, null ) );
-                }
+        for ( final ArtifactRepository repo : artifactRepositories )
+        {
+            // TODO: Authentication via memory password manager.
+            final String url = repo.getUrl();
+            uris.add( new URI( url ) );
+
+            if ( url.startsWith( "file:" ) )
+            {
+                locs.add( new SimpleLocation( url ) );
+            }
+            else
+            {
+                final ArtifactRepositoryPolicy releases = repo.getReleases();
+                final ArtifactRepositoryPolicy snapshots = repo.getSnapshots();
+                locs.add( new SimpleHttpLocation( url, url, snapshots == null ? false : snapshots.isEnabled(), releases == null ? true
+                                : releases.isEnabled(), true, false, -1, null ) );
             }
         }
 
