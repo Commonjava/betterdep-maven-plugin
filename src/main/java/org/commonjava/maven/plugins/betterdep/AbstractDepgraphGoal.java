@@ -356,7 +356,9 @@ public abstract class AbstractDepgraphGoal
             /* @formatter:off */
             // TODO: Create a proper cache provider that works with the maven local repository format.
             
-            final MavenLocationExpander mavenLocations = new MavenLocationExpander( customLocations, artifactRepositories, useLocalRepo ? session.getLocalRepository() : null );
+            final MavenLocationExpander mavenLocations = new MavenLocationExpander( customLocations, 
+                                                                                    artifactRepositories, 
+                                                                                    useLocalRepo ? session.getLocalRepository() : null );
 
             cartoBuilder = new CartographerBuilder( WORKSPACE_ID, resolverDir, 4, new FileNeo4jWorkspaceFactory( dbDir, true ) )
                                 .withLocationExpander( mavenLocations )
