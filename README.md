@@ -48,4 +48,23 @@ When it executes, the `paths` goal resolves the dependency graph for the `from` 
 
 The command and its output looks like this:
 
-     
+    $ mvn betterdep:paths \
+            -Dfrom=org.commonjava.aprox.wars:aprox-savant:0.9.1 
+            -Dto=org.commonjava.maven.atlas:atlas-identities:0.9.6
+
+    [...]
+    [INFO] Found 9 paths:
+    
+    org.commonjava.aprox.wars:aprox-savant:0.9.1
+      org.commonjava.aprox:aprox-depgraph:jar:0.9.1
+        org.commonjava.maven.cartographer:cartographer:jar:0.3.4.1
+          org.commonjava.maven.atlas:atlas-identities:jar:0.9.6
+    org.commonjava.aprox.wars:aprox-savant:0.9.1
+      org.commonjava.aprox:aprox-depgraph:jar:0.9.1
+        org.commonjava.maven.galley:galley-maven:jar:0.3.3.1
+          org.commonjava.maven.atlas:atlas-identities:jar:0.9.6
+    org.commonjava.aprox.wars:aprox-savant:0.9.1
+      org.commonjava.aprox:aprox-core:jar:0.9.1
+        org.commonjava.aprox:aprox-subsys-http:jar:0.9.1
+          org.commonjava.maven.galley:galley-transport-httpclient:jar:0.3.3.1
+            org.commonjava.maven.atlas:atlas-identities:jar:0.9.6
