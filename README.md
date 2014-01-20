@@ -118,4 +118,44 @@ This goal currently has three output formats for additions and deletions in the 
 * `brief` - Print only the form `declaring-GAV -> target-GAV[TC]` (where TC is type and classifier)
 * `targets` - Print only the target GAV[TC] for each changed relationship.
 
+The command and its output look like this:
+
+    $ mvn betterdep:diff \
+            -Dfrom=org.commonjava.maven.atlas:atlas-driver-neo4j-embedded:0.9.0 \
+            -Dto=org.commonjava.maven.atlas:atlas-driver-neo4j-embedded:0.9.6 \
+            -Dformat=targets
+    [...]
+    [INFO]
+    - org.commonjava.maven.atlas:atlas-drivers-parent:0.9.0
+    - org.commonjava.maven.atlas:atlas-identities:jar:0.9.0
+    - org.commonjava.maven.atlas:atlas-parent:0.9.0
+    - org.commonjava.maven.atlas:atlas-relationships-api:jar:0.9.0
+    - org.commonjava.util:logging:jar:1.1
+    + com.google.code.gson:gson:jar:1.7.2
+    + com.google.code.gson:gson:jar:2.2.2
+    + commons-codec:commons-codec:jar:1.4
+    + commons-lang:commons-lang:jar:2.5
+    + org.apache.commons:commons-parent:12
+    + org.apache.httpcomponents:httpclient:jar:4.1.1
+    + org.apache.httpcomponents:httpcomponents-client:4.1.1
+    + org.apache.httpcomponents:httpcomponents-core:4.1
+    + org.apache.httpcomponents:httpcore:jar:4.1
+    + org.apache.httpcomponents:project:4.1.1
+    + org.apache:apache:4
+    + org.commonjava.boms:web-commons-bom:pom:7
+    + org.commonjava.maven.atlas:atlas-drivers-parent:0.9.6
+    + org.commonjava.maven.atlas:atlas-identities:jar:0.9.6
+    + org.commonjava.maven.atlas:atlas-parent:0.9.6
+    + org.commonjava.maven.atlas:atlas-relationships-api:jar:0.9.6
+    + org.commonjava.util:logging:jar:1.2
+    + org.commonjava.util:logging:jar:1.3.1
+    + org.commonjava.web:json-serialization:jar:0.5
+    + org.commonjava.web:json-tools:0.5
+    + org.commonjava:commonjava:2
+    + org.jboss.arquillian:arquillian-bom:pom:1.0.1.Final
+    + org.jboss.shrinkwrap.descriptors:shrinkwrap-descriptors-bom:pom:2.0.0-alpha-3
+    + org.jboss.shrinkwrap.resolver:shrinkwrap-resolver-bom:pom:1.0.0-beta-7
+    + org.jboss.shrinkwrap:shrinkwrap-bom:pom:1.0.1
+    + org.sonatype.oss:oss-parent:5
+
 Future plans for this will likely include better tree-style formatting to help understand where things are changing in the dependency graph. For now, it may be useful to use this output in conjunction with `betterdep:tree` to see where changed artifacts fit into the overall graph.
