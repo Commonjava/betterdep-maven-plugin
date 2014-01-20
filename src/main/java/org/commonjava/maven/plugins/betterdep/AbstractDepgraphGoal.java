@@ -60,7 +60,7 @@ public abstract class AbstractDepgraphGoal
 
     public static final String WORKSPACE_ID = "betterdep";
 
-    @Parameter( defaultValue = "${reactorProjects}", readonly = true, required = true )
+    @Parameter( defaultValue = "${reactorProjects}", readonly = true )
     private List<MavenProject> projects;
 
     @Parameter( property = "from" )
@@ -69,10 +69,12 @@ public abstract class AbstractDepgraphGoal
     @Parameter( property = "in" )
     private String inRepos;
 
-    @Parameter( defaultValue = "${project.build.directory}/dep/resolved", readonly = true, required = true )
+    // FIXME Explicit use of 'target/' is bad, but without a project available ${project.build.directory} doesn't resolve.
+    @Parameter( defaultValue = "target/dep/resolved", readonly = true, required = true )
     private File resolverDir;
 
-    @Parameter( defaultValue = "${project.build.directory}/dep/db", readonly = true, required = true )
+    // FIXME Explicit use of 'target/' is bad, but without a project available ${project.build.directory} doesn't resolve.
+    @Parameter( defaultValue = "target/dep/db", readonly = true, required = true )
     private File dbDir;
 
     private Log log;

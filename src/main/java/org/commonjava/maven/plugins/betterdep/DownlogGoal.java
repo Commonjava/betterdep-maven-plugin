@@ -31,7 +31,7 @@ import org.commonjava.maven.galley.model.SimpleLocation;
 import org.commonjava.maven.plugins.betterdep.impl.MavenLocationExpander;
 import org.commonjava.util.logging.Log4jUtil;
 
-@Mojo( name = "downlog", aggregator = true, threadSafe = true )
+@Mojo( name = "downlog", requiresProject = false, aggregator = true, threadSafe = true )
 public class DownlogGoal
     extends AbstractDepgraphGoal
 {
