@@ -12,7 +12,7 @@ import org.commonjava.maven.atlas.graph.filter.ProjectRelationshipFilter;
 import org.commonjava.maven.atlas.graph.rel.ProjectRelationship;
 import org.commonjava.maven.atlas.graph.traverse.AbstractTraversal;
 import org.commonjava.maven.atlas.ident.DependencyScope;
-import org.commonjava.maven.atlas.ident.ref.ProjectVersionRef;
+import org.commonjava.maven.atlas.ident.ref.ProjectRef;
 
 public class PathsTraversal
     extends AbstractTraversal
@@ -20,22 +20,24 @@ public class PathsTraversal
 
     private final BetterDepFilter rootFilter;
 
-    private final Set<ProjectVersionRef> to;
+    private final Set<ProjectRef> to;
 
-    private final Map<ProjectVersionRef, OrFilter> cache = new HashMap<ProjectVersionRef, OrFilter>();
+    private final Map<ProjectRef, OrFilter> cache = new HashMap<ProjectRef, OrFilter>();
 
     private final Set<List<ProjectRelationship<?>>> paths = new HashSet<List<ProjectRelationship<?>>>();
 
-    public PathsTraversal( final DependencyScope scope, final Set<ProjectVersionRef> to )
+    public PathsTraversal( final DependencyScope scope, final Set<ProjectRef> toGas )
     {
         this.rootFilter = new BetterDepFilter( scope );
-        this.to = to;
+        this.to = toGas;
     }
 
     @Override
     public boolean preCheck( final ProjectRelationship<?> relationship, final List<ProjectRelationship<?>> path, final int pass )
     {
-        final ProjectVersionRef dRef = relationship.getDeclaring();
+        final ProjectRef dRef = relationship.getDeclaring()
+                                            .asProjectRef();
+
         ProjectRelationshipFilter filter = cache.get( dRef );
         if ( filter == null )
         {
@@ -44,8 +46,8 @@ public class PathsTraversal
 
         if ( filter.accept( relationship ) )
         {
-            final ProjectVersionRef tRef = relationship.getTarget()
-                                                       .asProjectVersionRef();
+            final ProjectRef tRef = relationship.getTarget()
+                                                .asProjectRef();
 
             if ( to.contains( tRef ) )
             {

@@ -1,5 +1,6 @@
 package org.commonjava.maven.plugins.betterdep;
 
+import static org.apache.commons.lang.StringUtils.join;
 import static org.commonjava.maven.atlas.ident.util.IdentityUtils.projectVersion;
 
 import java.io.File;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.log4j.Level;
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Dependency;
@@ -53,6 +55,7 @@ import org.commonjava.maven.galley.model.Location;
 import org.commonjava.maven.galley.model.SimpleLocation;
 import org.commonjava.maven.plugins.betterdep.impl.BetterDepFilter;
 import org.commonjava.maven.plugins.betterdep.impl.MavenLocationExpander;
+import org.commonjava.util.logging.Log4jUtil;
 
 public abstract class AbstractDepgraphGoal
     implements Mojo
@@ -79,14 +82,17 @@ public abstract class AbstractDepgraphGoal
 
     private Log log;
 
-    @Parameter( defaultValue = "runtime", required = true, property = "dep.scope" )
+    @Parameter( defaultValue = "runtime", required = true, property = "scope" )
     protected DependencyScope scope;
 
-    @Parameter( defaultValue = "true", required = true, property = "dep.dedupe" )
+    @Parameter( defaultValue = "true", required = true, property = "dedupe" )
     protected boolean dedupe;
 
     @Parameter( defaultValue = "${session}", readonly = true, required = true )
     private MavenSession session;
+
+    @Parameter( defaultValue = "false", property = "trace" )
+    protected boolean trace;
 
     protected Set<ProjectVersionRef> roots;
 
@@ -96,7 +102,7 @@ public abstract class AbstractDepgraphGoal
 
     protected GraphWorkspace workspace;
 
-    private List<ProjectRelationship<?>> rootRels;
+    private Set<ProjectRelationship<?>> rootRels;
 
     private ProjectRelationshipDiscoverer discoverer;
 
@@ -116,8 +122,7 @@ public abstract class AbstractDepgraphGoal
     protected void initDepgraph( final boolean useLocalRepo )
         throws MojoExecutionException
     {
-        rootRels = new ArrayList<ProjectRelationship<?>>();
-        roots = new LinkedHashSet<ProjectVersionRef>();
+        rootRels = new HashSet<ProjectRelationship<?>>();
         profiles = new HashSet<URI>();
 
         if ( inRepos != null )
@@ -150,30 +155,25 @@ public abstract class AbstractDepgraphGoal
 
         if ( fromProjects != null )
         {
+            roots = toRefs( fromProjects );
             readFromGAVs();
         }
         else
         {
+            roots = new LinkedHashSet<ProjectVersionRef>();
             readFromReactorProjects();
         }
 
+        getLog().info( "Got relationships:\n\n  " + join( rootRels, "\n  " ) + "\n" );
+
         if ( profiles != null && !profiles.isEmpty() )
         {
+            getLog().info( "Activating pom locations:\n\n  " + join( profiles, "\n  " ) + "\n" );
+
             workspace.addActivePomLocations( profiles );
         }
 
-        getLog().info( "Storing direct relationships..." );
-        try
-        {
-            final Set<ProjectRelationship<?>> rejected = carto.getDatabase()
-                                                              .storeRelationships( rootRels );
-
-            getLog().info( "The following direct relationships were rejected: " + rejected );
-        }
-        catch ( final CartoDataException e )
-        {
-            throw new MojoExecutionException( "Failed to store direct project relationships in depgraph database: " + e.getMessage(), e );
-        }
+        storeRels( rootRels );
 
         //        final ProjectVersionRef projectRef = new ProjectVersionRef( project.getGroupId(), project.getArtifactId(), project.getVersion() );
 
@@ -182,11 +182,46 @@ public abstract class AbstractDepgraphGoal
         //        filter = new DependencyFilter( scope );
     }
 
+    protected void storeRels( final Set<ProjectRelationship<?>> rels )
+        throws MojoExecutionException
+    {
+        getLog().info( "Storing direct relationships..." );
+        try
+        {
+            final Set<ProjectRelationship<?>> rejected = carto.getDatabase()
+                                                              .storeRelationships( rels );
+
+            getLog().info( "The following direct relationships were rejected:\n\n  " + join( rejected, "\n  " ) + "\n\n("
+                               + ( rels.size() - rejected.size() ) + " were accepted)" );
+        }
+        catch ( final CartoDataException e )
+        {
+            throw new MojoExecutionException( "Failed to store direct project relationships in depgraph database: " + e.getMessage(), e );
+        }
+    }
+
+    protected Set<ProjectVersionRef> toRefs( final String gavs )
+    {
+        final String[] rawGavs = gavs.split( "\\s*,\\s*" );
+        final Set<ProjectVersionRef> refs = new HashSet<ProjectVersionRef>( rawGavs.length );
+        for ( final String rawGav : rawGavs )
+        {
+            refs.add( projectVersion( rawGav ) );
+        }
+
+        return refs;
+    }
+
     protected void readFromGAVs()
         throws MojoExecutionException
     {
-        final String[] rawGavs = fromProjects.split( "\\s*,\\s*" );
+        getLog().info( "Initializing direct graph relationships from projects: " + fromProjects );
+        rootRels = getDirectRelsFor( roots );
+    }
 
+    protected Set<ProjectRelationship<?>> getDirectRelsFor( final Set<ProjectVersionRef> refs )
+        throws MojoExecutionException
+    {
         final Collection<DepgraphPatcher> patchers = cartoBuilder.getDepgraphPatchers();
         final Set<String> patcherIds = new HashSet<String>();
         if ( patchers != null )
@@ -205,14 +240,13 @@ public abstract class AbstractDepgraphGoal
         }
         catch ( final URISyntaxException e )
         {
-            throw new MojoExecutionException( "Cannot configure discovery for: " + fromProjects + ". Try -X for more information." );
+            throw new MojoExecutionException( "Cannot configure discovery for: " + refs + ". Try -X for more information." );
         }
 
-        for ( final String rawGav : rawGavs )
-        {
-            final ProjectVersionRef projectRef = projectVersion( rawGav );
-            roots.add( projectRef );
+        final Set<ProjectRelationship<?>> rels = new HashSet<ProjectRelationship<?>>();
 
+        for ( final ProjectVersionRef projectRef : refs )
+        {
             if ( discoverer == null )
             {
                 discoverer = cartoBuilder.getDiscoverer();
@@ -225,21 +259,24 @@ public abstract class AbstractDepgraphGoal
             }
             catch ( final CartoDataException e )
             {
-                throw new MojoExecutionException( "Cannot discover direct relationships for: " + rawGav + ": " + e.getMessage(), e );
+                throw new MojoExecutionException( "Cannot discover direct relationships for: " + projectRef + ": " + e.getMessage(), e );
             }
 
             if ( result == null )
             {
-                throw new MojoExecutionException( "Cannot discover direct relationships for: " + rawGav + ". Try -X for more information." );
+                throw new MojoExecutionException( "Cannot discover direct relationships for: " + projectRef + ". Try -X for more information." );
             }
 
-            rootRels.addAll( result.getAcceptedRelationships() );
+            rels.addAll( result.getAcceptedRelationships() );
         }
+
+        return rels;
     }
 
     protected void readFromReactorProjects()
         throws MojoExecutionException
     {
+        getLog().info( "Initializing direct graph relationships from reactor projects: " + projects );
         for ( final MavenProject project : projects )
         {
             final List<Profile> activeProfiles = project.getActiveProfiles();
@@ -308,7 +345,13 @@ public abstract class AbstractDepgraphGoal
 
     }
 
-    protected void resolveDepgraph()
+    protected void resolveFromDepgraph()
+        throws MojoExecutionException
+    {
+        resolveDepgraph( filter, roots );
+    }
+
+    protected void resolveDepgraph( final ProjectRelationshipFilter filter, final Set<ProjectVersionRef> roots )
         throws MojoExecutionException
     {
         final GraphDescription graphDesc = new GraphDescription( filter, roots );
@@ -319,7 +362,7 @@ public abstract class AbstractDepgraphGoal
         recipe.setWorkspaceId( WORKSPACE_ID );
         recipe.setSourceLocation( new SimpleLocation( MavenLocationExpander.EXPANSION_TARGET ) );
 
-        getLog().info( "Resolving depgraph(s)..." );
+        getLog().info( "Resolving depgraph(s) for: " + roots + "..." );
         try
         {
             carto.getResolver()
@@ -349,6 +392,18 @@ public abstract class AbstractDepgraphGoal
     private void startCartographer( final boolean useLocalRepo )
         throws MojoExecutionException
     {
+        Level lvl = Level.WARN;
+        if ( trace )
+        {
+            lvl = Level.TRACE;
+        }
+        else if ( getLog().isDebugEnabled() )
+        {
+            lvl = Level.INFO;
+        }
+
+        Log4jUtil.configure( lvl, "%-5p [%t]: %m%n" );
+
         getLog().info( "Starting cartographer..." );
         try
         {

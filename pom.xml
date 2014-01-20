@@ -24,7 +24,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <atlasVersion>0.9.6.1</atlasVersion>
+    <atlasVersion>0.9.7-SNAPSHOT</atlasVersion>
     <galleyVersion>0.3.3.1</galleyVersion>
   </properties>
 

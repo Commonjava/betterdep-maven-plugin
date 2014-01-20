@@ -1,6 +1,7 @@
 package org.commonjava.maven.plugins.betterdep;
 
-import static org.commonjava.maven.atlas.ident.util.IdentityUtils.projectVersion;
+import static org.apache.commons.lang.StringUtils.join;
+import static org.commonjava.maven.atlas.ident.util.IdentityUtils.project;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -16,6 +17,7 @@ import org.commonjava.maven.atlas.graph.model.EProjectWeb;
 import org.commonjava.maven.atlas.graph.rel.ProjectRelationship;
 import org.commonjava.maven.atlas.graph.rel.RelationshipPathComparator;
 import org.commonjava.maven.atlas.graph.spi.GraphDriverException;
+import org.commonjava.maven.atlas.ident.ref.ProjectRef;
 import org.commonjava.maven.atlas.ident.ref.ProjectVersionRef;
 import org.commonjava.maven.cartographer.data.CartoDataException;
 import org.commonjava.maven.plugins.betterdep.impl.PathsTraversal;
@@ -27,31 +29,43 @@ public class PathsGoal
 
     private static final String INDENT = "  ";
 
+    private static boolean HAS_RUN = false;
+
     @Parameter( property = "to", required = true )
     private String toProjects;
 
-    private Set<ProjectVersionRef> toGavs;
+    private Set<ProjectRef> toGas;
 
     @Override
     public void execute()
         throws MojoExecutionException, MojoFailureException
     {
-        final String[] rawGavs = toProjects.split( "\\s*,\\s*" );
-        toGavs = new HashSet<ProjectVersionRef>( rawGavs.length );
-        for ( final String rawGav : rawGavs )
+        if ( HAS_RUN )
         {
-            toGavs.add( projectVersion( rawGav ) );
+            getLog().info( "Dependency paths goal has already run. Skipping." );
+            return;
         }
 
+        HAS_RUN = true;
+
         initDepgraph( true );
-        resolveDepgraph();
+        resolveFromDepgraph();
+
+        final String[] rawGavs = toProjects.split( "\\s*,\\s*" );
+        toGas = new HashSet<ProjectRef>( rawGavs.length );
+        for ( final String rawGav : rawGavs )
+        {
+            toGas.add( project( rawGav ) );
+        }
+
+        getLog().info( "Resolving paths to:\n\n  " + join( toGas, "\n  " ) + "\n\nIn scope: " + scope + "\n" );
 
         try
         {
             final EProjectWeb web = carto.getDatabase()
                                          .getProjectWeb( roots.toArray( new ProjectVersionRef[roots.size()] ) );
 
-            final PathsTraversal paths = new PathsTraversal( scope, toGavs );
+            final PathsTraversal paths = new PathsTraversal( scope, toGas );
             for ( final ProjectVersionRef root : roots )
             {
                 try
@@ -60,7 +74,7 @@ public class PathsGoal
                 }
                 catch ( final GraphDriverException e )
                 {
-                    throw new MojoExecutionException( "Failed to traverse '" + root + "' looking for paths to: " + toGavs + ". Reason: "
+                    throw new MojoExecutionException( "Failed to traverse '" + root + "' looking for paths to: " + toGas + ". Reason: "
                         + e.getMessage(), e );
                 }
             }
@@ -96,7 +110,8 @@ public class PathsGoal
 
     private void printPath( final StringBuilder result, final List<ProjectRelationship<?>> path )
     {
-        result.append( path.get( 0 )
+        result.append( "\n" )
+              .append( path.get( 0 )
                            .getDeclaring() )
               .append( "\n" );
 
