@@ -9,8 +9,8 @@ Currently, it supplies four goals:
 
 * `tree`
 * `list`
-* `downlog`
 * `paths`
+* `downlog`
 
 In addition, none of these goals requires a current project to operate. This means you can use the `-Dfrom="g:a:v[, g:a:v]"` command-line parameter to print information about the dependency graph for any project that you can resolve from a repository. If you are working in a project directory, simply leave off the `from` parameter and betterdep will use `${reactorProjects}` instead (the current set of projects being built).
 
@@ -34,3 +34,18 @@ This goal prints all GAVs referenced in the project's dependency graph, formatte
 
 As with `tree` above, BOMs and parent POMs are included and annotated.
 
+## Goal: `paths`
+
+Have you ever had problems with a missing artifact in your build, but had no idea where the artifact was referenced...where that dependency was coming from? This goal is designed to answer that question. The invocation takes the form:
+
+    mvn betterdep:paths -Dto=org.foo:bar:1.2.3
+
+**or**
+
+    mvn betterdep:paths -Dfrom=org.myproj:project:1.0 -Dto=org.foo:bar:1.2.3
+
+When it executes, the `paths` goal resolves the dependency graph for the `from` project (or the current project(s) you're building). Having done that, it filters the graph for only those paths leading from the root project(s) to your designated `to` GAV(s). If you want to find paths to/from multiple GAVs, you can comma-separate them on the command line.
+
+The command and its output looks like this:
+
+     
