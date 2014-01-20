@@ -20,10 +20,10 @@ This goal prints the dependency graph formatted into tree-style output, much the
 
 One big improvement is the inclusion of BOMs and parent POMs referenced within the dependency graph, which gives a more complete view of the total list of GAVs required for a given project. These extra POMs are labeled with their usage, as are optional dependencies. 
 
-For dependencies that cannot be resolved, the old `dependency:tree` goal would fail with an error. Instead, `betterdep:tree` prints a sub-tree format of '???' is given and the GAV is labeled as **UNRESOLVED**, much like the following:
+For dependencies that cannot be resolved, the old `dependency:tree` goal would fail with an error. Instead, `betterdep:tree` prints a sub-tree format of '???' is given and the GAV is labeled as **NOT-RESOLVED**, much like the following:
 
     [...]
-    org.foo:bar:1.2.3 [UNRESOLVED]
+    org.foo:bar:1.2.3 [NOT-RESOLVED]
       ???
     commons-lang:commons-lang:2.5
     [...]
