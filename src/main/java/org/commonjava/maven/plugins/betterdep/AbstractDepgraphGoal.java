@@ -230,6 +230,12 @@ public abstract class AbstractDepgraphGoal
             startCartographer( useLocalRepo );
         }
 
+        final Map<String, Object> presetParams = new HashMap<String, Object>();
+        presetParams.put( CommonPresetParameters.SCOPE, scope );
+        presetParams.put( CommonPresetParameters.MANAGED, Boolean.valueOf( includeManaged ) );
+
+        filter = presets.getPresetFilter( preset, "betterdep", presetParams );
+
         if ( fromProjects != null )
         {
             roots = toRefs( fromProjects );
@@ -251,12 +257,6 @@ public abstract class AbstractDepgraphGoal
         }
 
         storeRels( rootRels );
-
-        final Map<String, Object> presetParams = new HashMap<String, Object>();
-        presetParams.put( CommonPresetParameters.SCOPE, scope );
-        presetParams.put( CommonPresetParameters.MANAGED, Boolean.valueOf( includeManaged ) );
-
-        filter = presets.getPresetFilter( preset, "betterdep", presetParams );
     }
 
     protected void storeRels( final Set<ProjectRelationship<?>> rels )
@@ -364,7 +364,13 @@ public abstract class AbstractDepgraphGoal
                 throw new MojoExecutionException( "Cannot discover direct relationships for: " + projectRef + ". Try -X for more information." );
             }
 
-            rels.addAll( result.getAcceptedRelationships() );
+            for ( final ProjectRelationship<?> rel : result.getAcceptedRelationships() )
+            {
+                if ( filter.accept( rel ) )
+                {
+                    rels.add( rel );
+                }
+            }
         }
 
         return rels;
