@@ -16,29 +16,34 @@
  ******************************************************************************/
 package org.commonjava.maven.plugins.betterdep;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
 import org.commonjava.maven.atlas.ident.ref.ProjectVersionRef;
 import org.commonjava.maven.cartographer.data.CartoDataException;
 import org.commonjava.maven.plugins.betterdep.impl.BetterDepRelationshipPrinter;
 
+/**
+ * Generates a tree-style listing of the artifacts contained within the dependency graph for
+ * a project or set of projects. Output also includes parent POMs and BOMs referenced from
+ * these artifacts by default. This output style is intended to show <em>how</em> different artifacts
+ * were included in dependency graph, not just the fact of their inclusion.
+ * 
+ * If this goal is run using the -Dfrom=GAV[,GAV]* parameter,
+ * those GAVs will be treated as the "roots" of the dependency graph (origins of traversal).
+ * Otherwise, the current set of projects will be used.
+ *  
+ * @author jdcasey
+ */
 @Mojo( name = "tree", requiresProject = false, aggregator = true, threadSafe = true )
 public class DepTreeGoal
     extends AbstractDepgraphGoal
 {
 
     private static boolean HAS_RUN = false;
-
-    @Parameter( property = "output" )
-    private File output;
 
     @Override
     public void execute()
@@ -67,7 +72,7 @@ public class DepTreeGoal
                 final BetterDepRelationshipPrinter printer = new BetterDepRelationshipPrinter( missing );
 
                 final String printed = carto.getRenderer()
-                                            .depTree( root, filter, scope, dedupe, labels, printer );
+                                            .depTree( root, filter, scope, false, labels, printer );
 
                 sb.append( "\n\n\nDependency tree for: " )
                   .append( root )
@@ -75,22 +80,11 @@ public class DepTreeGoal
                   .append( printed );
             }
 
-            if ( output == null )
-            {
-                getLog().info( sb.toString() );
-            }
-            else
-            {
-                FileUtils.write( output, sb.toString() );
-            }
+            write( sb );
         }
         catch ( final CartoDataException e )
         {
             throw new MojoExecutionException( "Failed to render dependency tree: " + e.getMessage(), e );
-        }
-        catch ( final IOException e )
-        {
-            throw new MojoExecutionException( "Failed to render dependency tree to: " + output + ". Reason: " + e.getMessage(), e );
         }
     }
 }

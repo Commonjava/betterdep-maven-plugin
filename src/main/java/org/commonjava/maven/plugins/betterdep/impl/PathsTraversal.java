@@ -27,9 +27,16 @@ import org.commonjava.maven.atlas.graph.filter.OrFilter;
 import org.commonjava.maven.atlas.graph.filter.ProjectRelationshipFilter;
 import org.commonjava.maven.atlas.graph.rel.ProjectRelationship;
 import org.commonjava.maven.atlas.graph.traverse.AbstractTraversal;
+import org.commonjava.maven.atlas.graph.traverse.ProjectNetTraversal;
 import org.commonjava.maven.atlas.ident.DependencyScope;
 import org.commonjava.maven.atlas.ident.ref.ProjectRef;
 
+/**
+ * Dependency graph traversal ({@link ProjectNetTraversal}) implementation used
+ * to determine the paths between two GAVs or sets of GAVs in a graph.
+ * 
+ * @author jdcasey
+ */
 public class PathsTraversal
     extends AbstractTraversal
 {

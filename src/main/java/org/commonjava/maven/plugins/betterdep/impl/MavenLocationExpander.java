@@ -42,6 +42,13 @@ import org.commonjava.maven.galley.spi.transport.LocationExpander;
 import org.commonjava.maven.galley.transport.htcli.model.SimpleHttpLocation;
 import org.commonjava.util.logging.Logger;
 
+/**
+ * Galley {@link LocationExpander} implementation that expands a shorthand URI
+ * given in the betterdep goals into the actual list of locations to check for
+ * artifacts.
+ * 
+ * @author jdcasey
+ */
 public class MavenLocationExpander
     implements LocationExpander, DiscoverySourceManager
 {
@@ -223,9 +230,11 @@ public class MavenLocationExpander
     }
 
     @Override
-    public void activateWorkspaceSources( final GraphWorkspace ws, final String... sources )
+    public boolean activateWorkspaceSources( final GraphWorkspace ws, final String... sources )
         throws CartoDataException
     {
+        final int initialCount = ws.getActiveSources()
+                                   .size();
         for ( final String loc : sources )
         {
             if ( EXPANSION_TARGET.equals( loc ) )
@@ -262,6 +271,9 @@ public class MavenLocationExpander
                 }
             }
         }
+
+        return ws.getActiveSources()
+                 .size() > initialCount;
     }
 
     @Override

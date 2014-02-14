@@ -38,6 +38,20 @@ import org.commonjava.maven.atlas.ident.ref.ProjectVersionRef;
 import org.commonjava.maven.cartographer.data.CartoDataException;
 import org.commonjava.maven.plugins.betterdep.impl.PathsTraversal;
 
+/**
+ * Generates a list of the paths within the dependency graph from the "root" projects
+ * to some other GAV or set of GAVs. This is a distillation of what a lot of people
+ * are really after when they use the 'tree' goal.
+ * 
+ * The key parameter here is the -Dto=GAV[,GAV]* parameter, which specifies the 
+ * list of artifacts to search for in the dependency graph.
+ * 
+ * If this goal is run using the -Dfrom=GAV[,GAV]* parameter,
+ * those GAVs will be treated as the "roots" of the dependency graph (origins of traversal).
+ * Otherwise, the current set of projects will be used.
+ *  
+ * @author jdcasey
+ */
 @Mojo( name = "paths", requiresProject = false, aggregator = true, threadSafe = true )
 public class PathsGoal
     extends AbstractDepgraphGoal
@@ -116,7 +130,7 @@ public class PathsGoal
                 result.append( "\n\n" );
             }
 
-            getLog().info( result );
+            write( result );
         }
         catch ( final CartoDataException e )
         {

@@ -18,15 +18,12 @@ package org.commonjava.maven.plugins.betterdep;
 
 import static org.apache.commons.lang.StringUtils.join;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -37,6 +34,17 @@ import org.commonjava.maven.cartographer.data.CartoDataException;
 import org.commonjava.maven.cartographer.dto.GraphDescription;
 import org.commonjava.maven.cartographer.dto.GraphDifference;
 
+/**
+ * Generates pseudo-diff style output that highlights the differences between two
+ * dependency graphs. The first (old) graph is generated from either the current projects,
+ * or else the -Dfrom=GAV[,GAV]* parameter. The second (new) graph is generated 
+ * from the -Dto=GAV[,GAV]* parameter.
+ * 
+ * This goal is most useful to determine the changes in the dependency graph from
+ * one release of a project to the next. 
+ * 
+ * @author jdcasey
+ */
 @Mojo( name = "diff", requiresProject = false, aggregator = true, threadSafe = true )
 public class DiffGoal
     extends AbstractDepgraphGoal
@@ -48,9 +56,6 @@ public class DiffGoal
     }
 
     private static boolean HAS_RUN = false;
-
-    @Parameter( property = "output" )
-    private File output;
 
     @Parameter( property = "to", required = true )
     private String toProjects;
@@ -119,22 +124,11 @@ public class DiffGoal
 
             sb.append( "\n\n" );
 
-            if ( output == null )
-            {
-                getLog().info( sb.toString() );
-            }
-            else
-            {
-                FileUtils.write( output, sb.toString() );
-            }
+            write( sb );
         }
         catch ( final CartoDataException e )
         {
             throw new MojoExecutionException( "Failed to retrieve depgraph for roots: " + roots + ". Reason: " + e.getMessage(), e );
-        }
-        catch ( final IOException e )
-        {
-            throw new MojoExecutionException( "Failed to write depgraph diff. Reason: " + e.getMessage(), e );
         }
     }
 

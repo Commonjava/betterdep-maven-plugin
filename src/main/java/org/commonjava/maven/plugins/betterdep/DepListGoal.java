@@ -16,29 +16,33 @@
  ******************************************************************************/
 package org.commonjava.maven.plugins.betterdep;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
 import org.commonjava.maven.atlas.ident.ref.ProjectVersionRef;
 import org.commonjava.maven.cartographer.data.CartoDataException;
 import org.commonjava.maven.plugins.betterdep.impl.BetterDepRelationshipPrinter;
 
+/**
+ * Generates a listing of the artifacts contained within the dependency graph for
+ * a project or set of projects. Output also includes parent POMs and BOMs referenced from
+ * these artifacts by default.
+ * 
+ * If this goal is run using the -Dfrom=GAV[,GAV]* parameter,
+ * those GAVs will be treated as the "roots" of the dependency graph (origins of traversal).
+ * Otherwise, the current set of projects will be used.
+ *  
+ * @author jdcasey
+ */
 @Mojo( name = "list", requiresProject = false, aggregator = true, threadSafe = true )
 public class DepListGoal
     extends AbstractDepgraphGoal
 {
 
     private static boolean HAS_RUN = false;
-
-    @Parameter( property = "output" )
-    private File output;
 
     @Override
     public void execute()
@@ -72,22 +76,11 @@ public class DepListGoal
                   .append( printed );
             }
 
-            if ( output == null )
-            {
-                getLog().info( sb.toString() );
-            }
-            else
-            {
-                FileUtils.write( output, sb.toString() );
-            }
+            write( sb );
         }
         catch ( final CartoDataException e )
         {
             throw new MojoExecutionException( "Failed to render dependency list: " + e.getMessage(), e );
-        }
-        catch ( final IOException e )
-        {
-            throw new MojoExecutionException( "Failed to render dependency list to: " + output + ". Reason: " + e.getMessage(), e );
         }
     }
 }

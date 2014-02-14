@@ -26,6 +26,17 @@ import org.commonjava.maven.atlas.ident.DependencyScope;
 import org.commonjava.maven.atlas.ident.ScopeTransitivity;
 import org.commonjava.maven.atlas.ident.ref.ProjectRef;
 
+/**
+ * Basic scope-oriented dependency graph filter that includes dependencies of 
+ * the given scope, associated parent POMs, and any BOMs mentioned by either of
+ * these.
+ * 
+ * Standard Maven scope implications are used for descendant filtering, where
+ * test-scope in a direct dependency translates to runtime scope for transitive
+ * dependencies, etc.
+ * 
+ * @author jdcasey
+ */
 public class BetterDepFilter
     implements ProjectRelationshipFilter
 {
@@ -36,7 +47,7 @@ public class BetterDepFilter
 
     public BetterDepFilter( final DependencyScope scope )
     {
-        this.scope = scope;
+        this.scope = scope == null ? DependencyScope.runtime : scope;
         this.excludes = null;
     }
 
@@ -67,7 +78,6 @@ public class BetterDepFilter
         }
     }
 
-    @SuppressWarnings( "incomplete-switch" )
     @Override
     public boolean accept( final ProjectRelationship<?> rel )
     {
@@ -80,6 +90,11 @@ public class BetterDepFilter
             }
             case DEPENDENCY:
             {
+                if ( scope == null )
+                {
+                    return false;
+                }
+
                 if ( excludes != null && excludes.contains( rel.getTarget()
                                                                .asProjectRef() ) )
                 {
@@ -95,6 +110,7 @@ public class BetterDepFilter
                     return true;
                 }
             }
+            default:
         }
 
         return false;

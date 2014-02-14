@@ -20,6 +20,7 @@ import static org.apache.commons.lang.StringUtils.join;
 import static org.commonjava.maven.atlas.ident.util.IdentityUtils.projectVersion;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -33,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Level;
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.execution.MavenSession;
@@ -50,7 +52,7 @@ import org.commonjava.maven.atlas.graph.filter.ProjectRelationshipFilter;
 import org.commonjava.maven.atlas.graph.rel.DependencyRelationship;
 import org.commonjava.maven.atlas.graph.rel.ParentRelationship;
 import org.commonjava.maven.atlas.graph.rel.ProjectRelationship;
-import org.commonjava.maven.atlas.graph.spi.neo4j.FileNeo4jWorkspaceFactory;
+import org.commonjava.maven.atlas.graph.spi.jung.JungWorkspaceFactory;
 import org.commonjava.maven.atlas.graph.util.RelationshipUtils;
 import org.commonjava.maven.atlas.graph.workspace.GraphWorkspace;
 import org.commonjava.maven.atlas.ident.DependencyScope;
@@ -67,46 +69,103 @@ import org.commonjava.maven.cartographer.discover.post.patch.DepgraphPatcher;
 import org.commonjava.maven.cartographer.dto.GraphComposition;
 import org.commonjava.maven.cartographer.dto.GraphDescription;
 import org.commonjava.maven.cartographer.dto.ResolverRecipe;
+import org.commonjava.maven.cartographer.preset.CommonPresetParameters;
+import org.commonjava.maven.cartographer.preset.PresetSelector;
 import org.commonjava.maven.galley.model.Location;
 import org.commonjava.maven.galley.model.SimpleLocation;
-import org.commonjava.maven.plugins.betterdep.impl.BetterDepFilter;
 import org.commonjava.maven.plugins.betterdep.impl.MavenLocationExpander;
 import org.commonjava.util.logging.Log4jUtil;
 
+/**
+ * Abstract goal that takes care of setting up {@link Cartographer} and associated
+ * instances/configuration, plus resolving dependency graphs, etc. Basic infrastructure
+ * for all betterdep goals.
+ * 
+ * @author jdcasey
+ */
 public abstract class AbstractDepgraphGoal
     implements Mojo
 {
 
     public static final String WORKSPACE_ID = "betterdep";
 
+    /**
+     * Write generated output to this file. Usually optional (except for 'repozip' 
+     * goal, where it will default to 'target/repo.zip').
+     */
+    @Parameter( property = "output" )
+    protected File output;
+
+    /**
+     * List of projects currently being built by Maven. This list is optional.
+     * 
+     * If present, these projects will form the roots for the resolved dependency graph.
+     * If empty, the -Dfrom=GAV[,GAV]* ({@link AbstractDepgraphGoal#fromProjects}) 
+     * parameter will furnish the dependency graph roots instead.
+     */
     @Parameter( defaultValue = "${reactorProjects}", readonly = true )
     private List<MavenProject> projects;
 
+    /**
+     * Use these GAVs as the roots of the dependency graph. If unspecified, and
+     * this goal is run in the presence of actual on-disk projects, those will 
+     * be used as the graph roots.
+     */
     @Parameter( property = "from" )
     private String fromProjects;
 
+    /**
+     * Specify a list of URLs from which to resolve the dependency graph and any
+     * artifacts needed to generate the goal's output.
+     */
     @Parameter( property = "in" )
     private String inRepos;
 
+    /**
+     * Temporary directory that will hold resolved POMs and other artifacts during
+     * graph resolution and other activities.
+     */
     // FIXME Explicit use of 'target/' is bad, but without a project available ${project.build.directory} doesn't resolve.
     @Parameter( defaultValue = "target/dep/resolved", readonly = true, required = true )
     private File resolverDir;
 
+    /**
+     * Temporary directory used to store the resolved dependency graph. This can
+     * speed up successive calls to betterdep goals if it is not erased between
+     * invocations.
+     */
     // FIXME Explicit use of 'target/' is bad, but without a project available ${project.build.directory} doesn't resolve.
     @Parameter( defaultValue = "target/dep/db", readonly = true, required = true )
     private File dbDir;
 
     private Log log;
 
+    /**
+     * Scope for inclusion in the dependency graph.
+     */
     @Parameter( defaultValue = "runtime", required = true, property = "scope" )
     protected DependencyScope scope;
 
-    @Parameter( defaultValue = "true", required = true, property = "dedupe" )
-    protected boolean dedupe;
+    /**
+     * Whether to include managed dependencies in the output (other than BOMs, 
+     * which are almost always included).
+     */
+    @Parameter( defaultValue = "false", property = "managed" )
+    protected boolean includeManaged;
+
+    /**
+     * Preset filter type to use when resolving the dependency graph and generating
+     * output. Not normally used.
+     */
+    @Parameter( defaultValue = "betterdep", property = "preset" )
+    protected String preset;
 
     @Parameter( defaultValue = "${session}", readonly = true, required = true )
     private MavenSession session;
 
+    /**
+     * Whether to provide verbose output related to dependency graph resolution.
+     */
     @Parameter( defaultValue = "false", property = "trace" )
     protected boolean trace;
 
@@ -129,6 +188,8 @@ public abstract class AbstractDepgraphGoal
     protected static CartographerBuilder cartoBuilder;
 
     protected static Cartographer carto;
+
+    protected static PresetSelector presets;
 
     public AbstractDepgraphGoal()
     {
@@ -191,11 +252,11 @@ public abstract class AbstractDepgraphGoal
 
         storeRels( rootRels );
 
-        //        final ProjectVersionRef projectRef = new ProjectVersionRef( project.getGroupId(), project.getArtifactId(), project.getVersion() );
+        final Map<String, Object> presetParams = new HashMap<String, Object>();
+        presetParams.put( CommonPresetParameters.SCOPE, scope );
+        presetParams.put( CommonPresetParameters.MANAGED, Boolean.valueOf( includeManaged ) );
 
-        //        filter = new MavenRuntimeFilter();
-        filter = new BetterDepFilter( scope );
-        //        filter = new DependencyFilter( scope );
+        filter = presets.getPresetFilter( preset, "betterdep", presetParams );
     }
 
     protected void storeRels( final Set<ProjectRelationship<?>> rels )
@@ -213,6 +274,26 @@ public abstract class AbstractDepgraphGoal
         catch ( final CartoDataException e )
         {
             throw new MojoExecutionException( "Failed to store direct project relationships in depgraph database: " + e.getMessage(), e );
+        }
+    }
+
+    protected void write( final CharSequence cs )
+        throws MojoExecutionException
+    {
+        if ( output == null )
+        {
+            getLog().info( cs.toString() );
+        }
+        else
+        {
+            try
+            {
+                FileUtils.write( output, cs.toString() );
+            }
+            catch ( final IOException e )
+            {
+                throw new MojoExecutionException( "Failed to write output to file: " + output + ". Reason: " + e.getMessage(), e );
+            }
         }
     }
 
@@ -433,13 +514,16 @@ public abstract class AbstractDepgraphGoal
                                                                                     artifactRepositories, 
                                                                                     useLocalRepo ? session.getLocalRepository() : null );
 
-            cartoBuilder = new CartographerBuilder( WORKSPACE_ID, resolverDir, 4, new FileNeo4jWorkspaceFactory( dbDir, true ) )
+            cartoBuilder = new CartographerBuilder( WORKSPACE_ID, resolverDir, 4, new JungWorkspaceFactory() )
+//            cartoBuilder = new CartographerBuilder( WORKSPACE_ID, resolverDir, 4, new FileNeo4jWorkspaceFactory( dbDir, true ) )
                                 .withLocationExpander( mavenLocations )
                                 .withSourceManager( mavenLocations )
                                 .withDefaultTransports();
 
             carto = cartoBuilder.build();
             /* @formatter:on */
+
+            presets = new PresetSelector( carto.getDatabase() );
 
             carto.getDatabase()
                  .setCurrentWorkspace( WORKSPACE_ID );
