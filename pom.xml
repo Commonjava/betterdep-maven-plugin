@@ -124,6 +124,17 @@
         <version>3.0.3</version>
         <scope>provided</scope>
       </dependency>
+      <dependency>
+        <groupId>org.commonjava.atservice</groupId>
+        <artifactId>atservice-annotation</artifactId>
+        <version>0.1</version>
+      </dependency>
+      <dependency>
+        <groupId>org.commonjava.atservice</groupId>
+        <artifactId>atservice-processor</artifactId>
+        <version>0.1</version>
+        <scope>provided</scope>
+      </dependency>
     </dependencies>
   </dependencyManagement>
   
@@ -176,6 +187,14 @@
       <groupId>org.commonjava.maven.atlas</groupId>
       <artifactId>atlas-driver-jung</artifactId>
     </dependency>
+    <dependency>
+      <groupId>org.commonjava.atservice</groupId>
+      <artifactId>atservice-annotation</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.commonjava.atservice</groupId>
+      <artifactId>atservice-processor</artifactId>
+    </dependency>
   </dependencies>
   
   <build>
@@ -186,6 +205,9 @@
           <configuration>
             <source>1.6</source>
             <target>1.6</target>
+            <annotationProcessors>
+              <annotationProcessor>org.commonjava.atservice.processor.ServiceAnnotationProcessor</annotationProcessor>
+            </annotationProcessors>
           </configuration>
         </plugin>
       </plugins>
