@@ -118,7 +118,7 @@ public class PathsGoal
             }
             else
             {
-                Collections.sort( discoveredPaths, new RelationshipPathComparator() );
+                Collections.sort( discoveredPaths, RelationshipPathComparator.INSTANCE );
                 result.append( "Found " )
                       .append( discoveredPaths.size() )
                       .append( " paths:\n\n" );

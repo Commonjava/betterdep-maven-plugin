@@ -40,7 +40,8 @@ import org.commonjava.maven.galley.model.SimpleLocation;
 import org.commonjava.maven.galley.model.VirtualResource;
 import org.commonjava.maven.galley.spi.transport.LocationExpander;
 import org.commonjava.maven.galley.transport.htcli.model.SimpleHttpLocation;
-import org.commonjava.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Galley {@link LocationExpander} implementation that expands a shorthand URI
@@ -61,7 +62,7 @@ public class MavenLocationExpander
 
     private final List<URI> locationUris;
 
-    private final Logger logger = new Logger( getClass() );
+    private final Logger logger = LoggerFactory.getLogger( getClass() );
 
     public MavenLocationExpander( final List<Location> customLocations, final List<ArtifactRepository> artifactRepositories,
                                   final ArtifactRepository localRepository )
@@ -111,7 +112,7 @@ public class MavenLocationExpander
         final List<Location> result = new ArrayList<Location>();
         for ( final Location loc : locations )
         {
-            logger.info( "Expanding: %s", loc );
+            logger.info( "Expanding: {}", loc );
             if ( EXPANSION_TARGET.equals( loc.getUri() ) )
             {
                 result.addAll( this.locations );
@@ -132,7 +133,7 @@ public class MavenLocationExpander
         final List<Location> result = new ArrayList<Location>();
         for ( final Location loc : locations )
         {
-            logger.info( "Expanding: %s", loc );
+            logger.info( "Expanding: {}", loc );
             if ( EXPANSION_TARGET.equals( loc.getUri() ) )
             {
                 result.addAll( this.locations );
@@ -154,7 +155,7 @@ public class MavenLocationExpander
         if ( resource instanceof ConcreteResource )
         {
             final Location loc = ( (ConcreteResource) resource ).getLocation();
-            logger.info( "Expanding: %s", loc );
+            logger.info( "Expanding: {}", loc );
             if ( EXPANSION_TARGET.equals( loc.getUri() ) )
             {
                 result.addAll( this.locations );
@@ -168,7 +169,7 @@ public class MavenLocationExpander
         {
             for ( final Location loc : ( (VirtualResource) resource ).getLocations() )
             {
-                logger.info( "Expanding: %s", loc );
+                logger.info( "Expanding: {}", loc );
                 if ( EXPANSION_TARGET.equals( loc.getUri() ) )
                 {
                     result.addAll( this.locations );
@@ -195,7 +196,7 @@ public class MavenLocationExpander
         final List<Location> result = new ArrayList<Location>();
         for ( final Object src : sources )
         {
-            logger.info( "Expanding: %s", src );
+            logger.info( "Expanding: {}", src );
             if ( EXPANSION_TARGET.equals( src ) )
             {
                 result.addAll( this.locations );

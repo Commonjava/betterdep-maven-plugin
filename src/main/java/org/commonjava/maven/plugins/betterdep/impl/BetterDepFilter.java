@@ -51,31 +51,10 @@ public class BetterDepFilter
         this.excludes = null;
     }
 
-    public BetterDepFilter( final DependencyScope scope, final Set<ProjectRef> inheritedExcludes, final DependencyRelationship parentRel )
+    public BetterDepFilter( final DependencyScope scope, final Set<ProjectRef> excludes )
     {
-        this.scope = ScopeTransitivity.maven.getChildFor( scope );
-        if ( ( inheritedExcludes != null && !inheritedExcludes.isEmpty() )
-            || ( parentRel != null && parentRel.getExcludes() != null && !parentRel.getExcludes()
-                                                                                   .isEmpty() ) )
-        {
-            excludes = new HashSet<ProjectRef>();
-            if ( inheritedExcludes != null )
-            {
-                excludes.addAll( inheritedExcludes );
-            }
-
-            if ( parentRel != null && parentRel.getExcludes() != null )
-            {
-                for ( final ProjectRef pr : parentRel.getExcludes() )
-                {
-                    excludes.add( pr.asProjectRef() );
-                }
-            }
-        }
-        else
-        {
-            excludes = null;
-        }
+        this.scope = scope;
+        this.excludes = excludes;
     }
 
     @Override
@@ -136,7 +115,32 @@ public class BetterDepFilter
     @Override
     public ProjectRelationshipFilter getChildFilter( final ProjectRelationship<?> parent )
     {
-        return new BetterDepFilter( scope, excludes, ( ( parent instanceof DependencyRelationship ) ? (DependencyRelationship) parent : null ) );
+        final DependencyScope nextScope = ScopeTransitivity.maven.getChildFor( scope );
+        boolean construct = nextScope != scope;
+
+        final DependencyRelationship dr = (DependencyRelationship) parent;
+
+        Set<ProjectRef> nextExcludes = dr.getExcludes();
+        if ( nextExcludes != null && !nextExcludes.isEmpty() )
+        {
+            construct = true;
+
+            final Set<ProjectRef> ex = new HashSet<ProjectRef>();
+
+            if ( excludes != null )
+            {
+                ex.addAll( excludes );
+            }
+
+            for ( final ProjectRef pr : dr.getExcludes() )
+            {
+                ex.add( pr.asProjectRef() );
+            }
+
+            nextExcludes = ex;
+        }
+
+        return construct ? new BetterDepFilter( nextScope, nextExcludes ) : this;
     }
 
     @Override

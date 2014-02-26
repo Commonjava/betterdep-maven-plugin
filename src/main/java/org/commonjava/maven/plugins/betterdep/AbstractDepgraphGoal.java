@@ -35,7 +35,6 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.log4j.Level;
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Dependency;
@@ -74,7 +73,6 @@ import org.commonjava.maven.cartographer.preset.PresetSelector;
 import org.commonjava.maven.galley.model.Location;
 import org.commonjava.maven.galley.model.SimpleLocation;
 import org.commonjava.maven.plugins.betterdep.impl.MavenLocationExpander;
-import org.commonjava.util.logging.Log4jUtil;
 
 /**
  * Abstract goal that takes care of setting up {@link Cartographer} and associated
@@ -495,18 +493,6 @@ public abstract class AbstractDepgraphGoal
     private void startCartographer( final boolean useLocalRepo )
         throws MojoExecutionException
     {
-        Level lvl = Level.WARN;
-        if ( trace )
-        {
-            lvl = Level.TRACE;
-        }
-        else if ( getLog().isDebugEnabled() )
-        {
-            lvl = Level.INFO;
-        }
-
-        Log4jUtil.configure( lvl, "%-5p [%t]: %m%n" );
-
         getLog().info( "Starting cartographer..." );
         try
         {

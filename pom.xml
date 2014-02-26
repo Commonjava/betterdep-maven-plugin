@@ -40,8 +40,8 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <atlasVersion>0.9.8-SNAPSHOT</atlasVersion>
-    <galleyVersion>0.3.3.1</galleyVersion>
+    <atlasVersion>0.10.0-SNAPSHOT</atlasVersion>
+    <galleyVersion>0.4-SNAPSHOT</galleyVersion>
   </properties>
 
   <dependencyManagement>
@@ -96,9 +96,11 @@
       </dependency>
       
       <dependency>
-        <groupId>org.commonjava.util</groupId>
-        <artifactId>logging</artifactId>
-        <version>1.4-SNAPSHOT</version>
+        <groupId>org.commonjava.boms</groupId>
+        <artifactId>web-commons-bom</artifactId>
+        <version>8-SNAPSHOT</version>
+        <type>pom</type>
+        <scope>import</scope>
       </dependency>
       
       <dependency>
@@ -194,6 +196,10 @@
     <dependency>
       <groupId>org.commonjava.atservice</groupId>
       <artifactId>atservice-processor</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
     </dependency>
   </dependencies>
   

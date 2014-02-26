@@ -8,7 +8,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.log4j.Level;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
@@ -21,7 +20,6 @@ import org.commonjava.maven.cartographer.dto.RepositoryContentRecipe;
 import org.commonjava.maven.galley.model.ConcreteResource;
 import org.commonjava.maven.galley.model.SimpleLocation;
 import org.commonjava.maven.plugins.betterdep.impl.MavenLocationExpander;
-import org.commonjava.util.logging.Log4jUtil;
 
 /**
  * Abstract goal that takes care of resolving repository contents given a list of
@@ -95,8 +93,6 @@ public abstract class AbstractRepoGoal
     protected Map<ProjectVersionRef, Map<ArtifactRef, ConcreteResource>> resolveRepoContents()
         throws MojoExecutionException
     {
-        Log4jUtil.configure( getLog().isDebugEnabled() ? Level.INFO : Level.WARN, "%-5p [%t]: %m%n" );
-
         initDepgraph( false );
         final RepositoryContentRecipe recipe = new RepositoryContentRecipe();
 
