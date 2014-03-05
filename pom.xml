@@ -40,8 +40,10 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <atlasVersion>0.10.0-SNAPSHOT</atlasVersion>
-    <galleyVersion>0.4-SNAPSHOT</galleyVersion>
+    <atlasVersion>0.10.1</atlasVersion>
+    <galleyVersion>0.4.1</galleyVersion>
+    <cartoVersion>0.4.1</cartoVersion>
+    <bomVersion>9</bomVersion>
   </properties>
 
   <dependencyManagement>
@@ -49,7 +51,7 @@
       <dependency>
         <groupId>org.commonjava.maven.cartographer</groupId>
         <artifactId>cartographer</artifactId>
-        <version>0.4-SNAPSHOT</version>
+        <version>${cartoVersion}</version>
       </dependency>
       
       <dependency>
@@ -98,7 +100,7 @@
       <dependency>
         <groupId>org.commonjava.boms</groupId>
         <artifactId>web-commons-bom</artifactId>
-        <version>8-SNAPSHOT</version>
+        <version>${bomVersion}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
