@@ -118,26 +118,31 @@ public class BetterDepFilter
         final DependencyScope nextScope = ScopeTransitivity.maven.getChildFor( scope );
         boolean construct = nextScope != scope;
 
-        final DependencyRelationship dr = (DependencyRelationship) parent;
+        Set<ProjectRef> nextExcludes = excludes;
 
-        Set<ProjectRef> nextExcludes = dr.getExcludes();
-        if ( nextExcludes != null && !nextExcludes.isEmpty() )
+        if ( parent instanceof DependencyRelationship )
         {
-            construct = true;
+            final DependencyRelationship dr = (DependencyRelationship) parent;
 
-            final Set<ProjectRef> ex = new HashSet<ProjectRef>();
-
-            if ( excludes != null )
+            nextExcludes = dr.getExcludes();
+            if ( nextExcludes != null && !nextExcludes.isEmpty() )
             {
-                ex.addAll( excludes );
-            }
+                construct = true;
 
-            for ( final ProjectRef pr : dr.getExcludes() )
-            {
-                ex.add( pr.asProjectRef() );
-            }
+                final Set<ProjectRef> ex = new HashSet<ProjectRef>();
 
-            nextExcludes = ex;
+                if ( excludes != null )
+                {
+                    ex.addAll( excludes );
+                }
+
+                for ( final ProjectRef pr : dr.getExcludes() )
+                {
+                    ex.add( pr.asProjectRef() );
+                }
+
+                nextExcludes = ex;
+            }
         }
 
         return construct ? new BetterDepFilter( nextScope, nextExcludes ) : this;
