@@ -40,10 +40,10 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <atlasVersion>0.10.1</atlasVersion>
-    <galleyVersion>0.4.1</galleyVersion>
-    <cartoVersion>0.4.1</cartoVersion>
-    <bomVersion>9</bomVersion>
+    <atlasVersion>0.11.0</atlasVersion>
+    <galleyVersion>0.4.2</galleyVersion>
+    <cartoVersion>0.5</cartoVersion>
+    <bomVersion>10</bomVersion>
   </properties>
 
   <dependencyManagement>
