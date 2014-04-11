@@ -40,9 +40,9 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <atlasVersion>0.11.0</atlasVersion>
-    <galleyVersion>0.4.2</galleyVersion>
-    <cartoVersion>0.5</cartoVersion>
+    <atlasVersion>0.12.0-SNAPSHOT</atlasVersion>
+    <galleyVersion>0.4.3-SNAPSHOT</galleyVersion>
+    <cartoVersion>0.6-SNAPSHOT</cartoVersion>
     <bomVersion>10</bomVersion>
   </properties>
 

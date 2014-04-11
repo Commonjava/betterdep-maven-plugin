@@ -84,8 +84,7 @@ public class DiffGoal
         resolveFromDepgraph();
 
         toGavs = toRefs( toProjects );
-        final Set<ProjectRelationship<?>> rels = getDirectRelsFor( toGavs );
-        storeRels( rels );
+        getDirectRelsFor( toGavs );
 
         resolveDepgraph( filter, toGavs );
 

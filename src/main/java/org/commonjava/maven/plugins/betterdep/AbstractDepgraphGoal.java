@@ -38,6 +38,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Dependency;
+import org.apache.maven.model.DependencyManagement;
 import org.apache.maven.model.Exclusion;
 import org.apache.maven.model.Profile;
 import org.apache.maven.monitor.logging.DefaultLog;
@@ -48,6 +49,7 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.logging.console.ConsoleLogger;
 import org.commonjava.maven.atlas.graph.filter.ProjectRelationshipFilter;
+import org.commonjava.maven.atlas.graph.rel.BomRelationship;
 import org.commonjava.maven.atlas.graph.rel.DependencyRelationship;
 import org.commonjava.maven.atlas.graph.rel.ParentRelationship;
 import org.commonjava.maven.atlas.graph.rel.ProjectRelationship;
@@ -332,6 +334,7 @@ public abstract class AbstractDepgraphGoal
         {
             config = new DefaultDiscoveryConfig( MavenLocationExpander.EXPANSION_TARGET );
             config.setEnabledPatchers( patcherIds );
+            config.setStoreRelationships( true );
         }
         catch ( final URISyntaxException e )
         {
@@ -350,7 +353,7 @@ public abstract class AbstractDepgraphGoal
             DiscoveryResult result;
             try
             {
-                result = discoverer.discoverRelationships( projectRef, config, false );
+                result = discoverer.discoverRelationships( projectRef, config );
             }
             catch ( final CartoDataException e )
             {
@@ -427,6 +430,21 @@ public abstract class AbstractDepgraphGoal
                                                                                                  dep.isOptional() ),
                                                           DependencyScope.getScope( dep.getScope() ), index, false,
                                                           excludes.toArray( new ProjectRef[excludes.size()] ) ) );
+            }
+
+            final DependencyManagement dm = project.getDependencyManagement();
+            if ( dm != null )
+            {
+                final List<Dependency> managed = dm.getDependencies();
+                int i = 0;
+                for ( final Dependency dep : managed )
+                {
+                    if ( "pom".equals( dep.getType() ) && "import".equals( dep.getScope() ) )
+                    {
+                        final ProjectVersionRef depRef = new ProjectVersionRef( dep.getGroupId(), dep.getArtifactId(), dep.getVersion() );
+                        rootRels.add( new BomRelationship( localUri, projectRef, depRef, i++ ) );
+                    }
+                }
             }
 
             ProjectVersionRef lastParent = projectRef;

@@ -19,9 +19,11 @@ package org.commonjava.maven.plugins.betterdep.impl;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.commonjava.maven.atlas.graph.filter.ProjectRelationshipFilter;
 import org.commonjava.maven.atlas.graph.rel.DependencyRelationship;
 import org.commonjava.maven.atlas.graph.rel.ProjectRelationship;
+import org.commonjava.maven.atlas.graph.rel.RelationshipType;
 import org.commonjava.maven.atlas.ident.DependencyScope;
 import org.commonjava.maven.atlas.ident.ScopeTransitivity;
 import org.commonjava.maven.atlas.ident.ref.ProjectRef;
@@ -40,6 +42,8 @@ import org.commonjava.maven.atlas.ident.ref.ProjectRef;
 public class BetterDepFilter
     implements ProjectRelationshipFilter
 {
+
+    private static final long serialVersionUID = 1L;
 
     private final DependencyScope scope;
 
@@ -67,6 +71,10 @@ public class BetterDepFilter
             {
                 return true;
             }
+            case BOM:
+            {
+                return true;
+            }
             case DEPENDENCY:
             {
                 if ( scope == null )
@@ -80,11 +88,7 @@ public class BetterDepFilter
                     return false;
                 }
 
-                if ( isBOM( rel ) )
-                {
-                    return true;
-                }
-                else if ( !rel.isManaged() && scope.implies( ( (DependencyRelationship) rel ).getScope() ) )
+                if ( !rel.isManaged() && scope.implies( ( (DependencyRelationship) rel ).getScope() ) )
                 {
                     return true;
                 }
@@ -93,23 +97,6 @@ public class BetterDepFilter
         }
 
         return false;
-    }
-
-    private boolean isBOM( final ProjectRelationship<?> rel )
-    {
-        if ( !rel.isManaged() )
-        {
-            return false;
-        }
-
-        if ( !( rel instanceof DependencyRelationship ) )
-        {
-            return false;
-        }
-
-        final DependencyRelationship dr = (DependencyRelationship) rel;
-        return ( DependencyScope._import == dr.getScope() && "pom".equals( dr.getTargetArtifact()
-                                                                             .getType() ) );
     }
 
     @Override
@@ -149,11 +136,59 @@ public class BetterDepFilter
     }
 
     @Override
-    public void render( final StringBuilder sb )
+    public String getLongId()
     {
-        sb.append( "PARENTS || BOMS || DEPENDENCIES[scope: " )
-          .append( scope.realName() )
-          .append( ']' );
+        final StringBuilder sb = new StringBuilder( "PARENTS || BOMS || DEPENDENCIES[scope:" ).append( scope.realName() );
+        if ( excludes != null && !excludes.isEmpty() )
+        {
+            sb.append( ", excludes:{" );
+            boolean first = true;
+            for ( final ProjectRef exclude : excludes )
+            {
+                if ( !first )
+                {
+                    sb.append( ',' );
+                }
+
+                first = false;
+                sb.append( exclude );
+            }
+
+            sb.append( "}" );
+        }
+
+        sb.append( ']' );
+
+        return sb.toString();
+    }
+
+    @Override
+    public String getCondensedId()
+    {
+        return DigestUtils.shaHex( getLongId() );
+    }
+
+    @Override
+    public boolean includeManagedRelationships()
+    {
+        return false;
+    }
+
+    @Override
+    public boolean includeConcreteRelationships()
+    {
+        return true;
+    }
+
+    @Override
+    public Set<RelationshipType> getAllowedTypes()
+    {
+        final Set<RelationshipType> result = new HashSet<RelationshipType>();
+        result.add( RelationshipType.PARENT );
+        result.add( RelationshipType.BOM );
+        result.add( RelationshipType.DEPENDENCY );
+
+        return result;
     }
 
 }
