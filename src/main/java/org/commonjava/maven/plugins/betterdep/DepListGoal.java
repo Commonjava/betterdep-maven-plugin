@@ -62,7 +62,7 @@ public class DepListGoal
                 final BetterDepRelationshipPrinter printer = new BetterDepRelationshipPrinter();
 
                 final String printed = carto.getRenderer()
-                                            .depList( root, filter, scope, labels, printer );
+                                            .depList( root, filter, labels, printer );
 
                 sb.append( "\n\n\nDependency list for: " )
                   .append( root )

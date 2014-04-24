@@ -66,7 +66,7 @@ public class DepTreeGoal
                 final BetterDepRelationshipPrinter printer = new BetterDepRelationshipPrinter( missing );
 
                 final String printed = carto.getRenderer()
-                                            .depTree( root, filter, scope, false, labels, printer );
+                                            .depTree( root, filter, false, labels, printer );
 
                 sb.append( "\n\n\nDependency tree for: " )
                   .append( root )
