@@ -10,6 +10,7 @@
  ******************************************************************************/
 package org.commonjava.maven.plugins.betterdep.impl;
 
+import java.io.PrintWriter;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -40,10 +41,11 @@ public class BetterDepRelationshipPrinter
     }
 
     @Override
-    public void print( final ProjectRelationship<?> relationship, final ProjectVersionRef selectedTarget, final StringBuilder builder,
+    public void print( final ProjectRelationship<?> relationship, final ProjectVersionRef selectedTarget,
+                       final PrintWriter writer,
                        final Map<String, Set<ProjectVersionRef>> labels, final int depth, final String indent )
     {
-        indent( builder, depth, indent );
+        indent( writer, depth, indent );
 
         final RelationshipType type = relationship.getType();
 
@@ -85,7 +87,7 @@ public class BetterDepRelationshipPrinter
                 localLabels.add( "OPTIONAL" );
             }
 
-            //            builder.append( " [idx: " )
+            //            writer.print( " [idx: " )
             //                   .append( relationship.getIndex() )
             //                   .append( ']' );
         }
@@ -94,41 +96,42 @@ public class BetterDepRelationshipPrinter
             localLabels.add( type.name() );
         }
 
-        printProjectVersionRef( targetArtifact, builder, suffix, labels, localLabels );
+        printProjectVersionRef( targetArtifact, writer, suffix, labels, localLabels );
 
         if ( !target.equals( originalTarget ) )
         {
-            builder.append( " [was: " )
-                   .append( originalTarget )
-                   .append( "]" );
+            writer.print( " [was: " );
+            writer.print( originalTarget );
+            writer.print( "]" );
         }
 
         if ( missing != null && missing.contains( target ) )
         {
-            builder.append( '\n' );
-            indent( builder, depth + 1, indent );
-            builder.append( "???" );
+            writer.print( '\n' );
+            indent( writer, depth + 1, indent );
+            writer.print( "???" );
         }
     }
 
     @Override
-    public void printProjectVersionRef( final ProjectVersionRef targetArtifact, final StringBuilder builder, final String suffix,
+    public void printProjectVersionRef( final ProjectVersionRef targetArtifact, final PrintWriter writer,
+                                        final String suffix,
                                         final Map<String, Set<ProjectVersionRef>> labels, final Set<String> localLabels )
     {
         // the original could be an artifact ref!
         final ProjectVersionRef target = targetArtifact.asProjectVersionRef();
 
-        builder.append( targetArtifact );
+        writer.print( targetArtifact );
         if ( suffix != null )
         {
-            builder.append( suffix );
+            writer.print( suffix );
         }
 
         boolean hasLabel = false;
         if ( localLabels != null && !localLabels.isEmpty() )
         {
             hasLabel = true;
-            builder.append( " (" );
+            writer.print( " (" );
 
             boolean first = true;
             for ( final String label : localLabels )
@@ -139,10 +142,10 @@ public class BetterDepRelationshipPrinter
                 }
                 else
                 {
-                    builder.append( ", " );
+                    writer.print( ", " );
                 }
 
-                builder.append( label );
+                writer.print( label );
             }
         }
 
@@ -156,29 +159,29 @@ public class BetterDepRelationshipPrinter
                 if ( !hasLabel )
                 {
                     hasLabel = true;
-                    builder.append( " (" );
+                    writer.print( " (" );
                 }
                 else
                 {
-                    builder.append( ", " );
+                    writer.print( ", " );
                 }
 
-                builder.append( label );
+                writer.print( label );
             }
 
         }
 
         if ( hasLabel )
         {
-            builder.append( ')' );
+            writer.print( ')' );
         }
     }
 
-    private void indent( final StringBuilder builder, final int depth, final String indent )
+    private void indent( final PrintWriter writer, final int depth, final String indent )
     {
         for ( int i = 0; i < depth; i++ )
         {
-            builder.append( indent );
+            writer.print( indent );
         }
     }
 }

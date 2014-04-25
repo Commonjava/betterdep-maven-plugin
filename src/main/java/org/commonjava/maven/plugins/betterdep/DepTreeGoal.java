@@ -10,9 +10,13 @@
  ******************************************************************************/
 package org.commonjava.maven.plugins.betterdep;
 
+import java.io.File;
+import java.io.PrintWriter;
+import java.io.Writer;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -53,11 +57,20 @@ public class DepTreeGoal
 
         initDepgraph( true );
         resolveFromDepgraph();
+
+        if ( output == null )
+        {
+            output = new File( "target/deptree.txt" );
+        }
+
+        Writer writer = null;
         try
         {
+            writer = getWriter();
+            final PrintWriter pw = new PrintWriter( writer );
+
             final Map<String, Set<ProjectVersionRef>> labels = getLabelsMap();
 
-            final StringBuilder sb = new StringBuilder();
             for ( final ProjectVersionRef root : roots )
             {
                 final Set<ProjectVersionRef> missing = carto.getDatabase()
@@ -65,20 +78,21 @@ public class DepTreeGoal
 
                 final BetterDepRelationshipPrinter printer = new BetterDepRelationshipPrinter( missing );
 
-                final String printed = carto.getRenderer()
-                                            .depTree( root, filter, false, labels, printer );
+                pw.printf( "\n\n\nDependency tree for: %s:\n\n", root );
 
-                sb.append( "\n\n\nDependency tree for: " )
-                  .append( root )
-                  .append( ": \n\n" )
-                  .append( printed );
+                carto.getRenderer()
+                     .depTree( root, filter, false, labels, printer, pw );
             }
 
-            write( sb );
+            getLog().info( "Dependency tree(s) written to: " + output );
         }
         catch ( final CartoDataException e )
         {
             throw new MojoExecutionException( "Failed to render dependency tree: " + e.getMessage(), e );
+        }
+        finally
+        {
+            IOUtils.closeQuietly( writer );
         }
     }
 }

@@ -14,7 +14,9 @@ import static org.apache.commons.lang.StringUtils.join;
 import static org.commonjava.maven.atlas.ident.util.IdentityUtils.projectVersion;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Writer;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -268,6 +270,26 @@ public abstract class AbstractDepgraphGoal
         catch ( final CartoDataException e )
         {
             throw new MojoExecutionException( "Failed to store direct project relationships in depgraph database: " + e.getMessage(), e );
+        }
+    }
+
+    protected Writer getWriter()
+        throws MojoExecutionException
+    {
+        if ( output == null )
+        {
+            throw new MojoExecutionException( "No output file specified. Cannot open output-file writer!" );
+        }
+
+        output.getParentFile()
+              .mkdirs();
+        try
+        {
+            return new FileWriter( output );
+        }
+        catch ( final IOException e )
+        {
+            throw new MojoExecutionException( "Failed to open output file: " + e.getMessage(), e );
         }
     }
 

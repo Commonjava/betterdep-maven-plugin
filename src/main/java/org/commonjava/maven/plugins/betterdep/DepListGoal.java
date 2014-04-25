@@ -10,9 +10,13 @@
  ******************************************************************************/
 package org.commonjava.maven.plugins.betterdep;
 
+import java.io.File;
+import java.io.PrintWriter;
+import java.io.Writer;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -52,29 +56,38 @@ public class DepListGoal
 
         initDepgraph( true );
         resolveFromDepgraph();
+
+        if ( output == null )
+        {
+            output = new File( "target/deplist.txt" );
+        }
+
+        Writer writer = null;
         try
         {
+            writer = getWriter();
+            final PrintWriter pw = new PrintWriter( writer );
+
             final Map<String, Set<ProjectVersionRef>> labels = getLabelsMap();
 
-            final StringBuilder sb = new StringBuilder();
             for ( final ProjectVersionRef root : roots )
             {
                 final BetterDepRelationshipPrinter printer = new BetterDepRelationshipPrinter();
 
-                final String printed = carto.getRenderer()
-                                            .depList( root, filter, labels, printer );
-
-                sb.append( "\n\n\nDependency list for: " )
-                  .append( root )
-                  .append( ": \n\n" )
-                  .append( printed );
+                pw.printf( "\n\n\nDependency list for: %s:\n\n", root );
+                carto.getRenderer()
+                     .depList( root, filter, labels, printer, pw );
             }
 
-            write( sb );
+            getLog().info( "Dependency list(s) written to: " + output );
         }
         catch ( final CartoDataException e )
         {
             throw new MojoExecutionException( "Failed to render dependency list: " + e.getMessage(), e );
+        }
+        finally
+        {
+            IOUtils.closeQuietly( writer );
         }
     }
 }
