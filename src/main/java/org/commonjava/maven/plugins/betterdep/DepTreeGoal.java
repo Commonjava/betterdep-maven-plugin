@@ -71,18 +71,12 @@ public class DepTreeGoal
 
             final Map<String, Set<ProjectVersionRef>> labels = getLabelsMap();
 
-            for ( final ProjectVersionRef root : roots )
-            {
-                final Set<ProjectVersionRef> missing = carto.getDatabase()
-                                                            .getAllIncompleteSubgraphs();
+            final Set<ProjectVersionRef> missing = graph.getAllIncompleteSubgraphs();
 
-                final BetterDepRelationshipPrinter printer = new BetterDepRelationshipPrinter( missing );
+            final BetterDepRelationshipPrinter printer = new BetterDepRelationshipPrinter( missing );
 
-                pw.printf( "\n\n\nDependency tree for: %s:\n\n", root );
-
-                carto.getRenderer()
-                     .depTree( root, filter, false, labels, printer, pw );
-            }
+            carto.getRenderer()
+                 .depTree( graph, false, labels, printer, pw );
 
             getLog().info( "Dependency tree(s) written to: " + output );
         }

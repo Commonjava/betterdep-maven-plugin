@@ -14,7 +14,6 @@ import java.util.Map;
 
 import org.commonjava.atservice.annotation.Service;
 import org.commonjava.maven.atlas.graph.filter.ProjectRelationshipFilter;
-import org.commonjava.maven.atlas.graph.workspace.GraphWorkspace;
 import org.commonjava.maven.atlas.ident.DependencyScope;
 import org.commonjava.maven.cartographer.preset.CommonPresetParameters;
 import org.commonjava.maven.cartographer.preset.PresetFactory;
@@ -41,7 +40,7 @@ public class BetterDepFilterFactory
     }
 
     @Override
-    public ProjectRelationshipFilter newFilter( final String presetId, final GraphWorkspace workspace, final Map<String, Object> parameters )
+    public ProjectRelationshipFilter newFilter( final String presetId, final Map<String, Object> parameters )
     {
         return new BetterDepFilter( (DependencyScope) parameters.get( CommonPresetParameters.SCOPE ) );
     }

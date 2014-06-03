@@ -70,14 +70,10 @@ public class DepListGoal
 
             final Map<String, Set<ProjectVersionRef>> labels = getLabelsMap();
 
-            for ( final ProjectVersionRef root : roots )
-            {
-                final BetterDepRelationshipPrinter printer = new BetterDepRelationshipPrinter();
+            final BetterDepRelationshipPrinter printer = new BetterDepRelationshipPrinter();
 
-                pw.printf( "\n\n\nDependency list for: %s:\n\n", root );
-                carto.getRenderer()
-                     .depList( root, filter, labels, printer, pw );
-            }
+            carto.getRenderer()
+                 .depList( graph, labels, printer, pw );
 
             getLog().info( "Dependency list(s) written to: " + output );
         }

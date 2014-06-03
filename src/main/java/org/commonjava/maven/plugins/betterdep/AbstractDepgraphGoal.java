@@ -44,14 +44,17 @@ import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.logging.console.ConsoleLogger;
+import org.commonjava.maven.atlas.graph.RelationshipGraph;
+import org.commonjava.maven.atlas.graph.RelationshipGraphException;
+import org.commonjava.maven.atlas.graph.ViewParams;
 import org.commonjava.maven.atlas.graph.filter.ProjectRelationshipFilter;
+import org.commonjava.maven.atlas.graph.mutate.ManagedDependencyMutator;
 import org.commonjava.maven.atlas.graph.rel.BomRelationship;
 import org.commonjava.maven.atlas.graph.rel.DependencyRelationship;
 import org.commonjava.maven.atlas.graph.rel.ParentRelationship;
 import org.commonjava.maven.atlas.graph.rel.ProjectRelationship;
-import org.commonjava.maven.atlas.graph.spi.neo4j.FileNeo4jWorkspaceFactory;
+import org.commonjava.maven.atlas.graph.spi.neo4j.FileNeo4jConnectionFactory;
 import org.commonjava.maven.atlas.graph.util.RelationshipUtils;
-import org.commonjava.maven.atlas.graph.workspace.GraphWorkspace;
 import org.commonjava.maven.atlas.ident.DependencyScope;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.commonjava.maven.atlas.ident.ref.ProjectRef;
@@ -171,7 +174,7 @@ public abstract class AbstractDepgraphGoal
 
     private Set<URI> profiles;
 
-    protected GraphWorkspace workspace;
+    protected RelationshipGraph graph;
 
     private Set<ProjectRelationship<?>> rootRels;
 
@@ -235,12 +238,17 @@ public abstract class AbstractDepgraphGoal
         if ( fromProjects != null )
         {
             roots = toRefs( fromProjects );
+
+            setupGraph();
+
             readFromGAVs();
         }
         else
         {
             roots = new LinkedHashSet<ProjectVersionRef>();
             readFromReactorProjects();
+
+            setupGraph();
         }
 
         getLog().info( "Got relationships:\n\n  " + join( rootRels, "\n  " ) + "\n" );
@@ -249,10 +257,25 @@ public abstract class AbstractDepgraphGoal
         {
             getLog().info( "Activating pom locations:\n\n  " + join( profiles, "\n  " ) + "\n" );
 
-            workspace.addActivePomLocations( profiles );
+            graph.getParams()
+                 .addActivePomLocations( profiles );
         }
 
         storeRels( rootRels );
+    }
+
+    private void setupGraph()
+        throws MojoExecutionException
+    {
+        try
+        {
+            graph = carto.getGraphFactory()
+                         .open( new ViewParams( WORKSPACE_ID, filter, new ManagedDependencyMutator(), roots ), true );
+        }
+        catch ( final RelationshipGraphException e )
+        {
+            throw new MojoExecutionException( "Failed to open graph: " + e.getMessage(), e );
+        }
     }
 
     protected void storeRels( final Set<ProjectRelationship<?>> rels )
@@ -261,15 +284,15 @@ public abstract class AbstractDepgraphGoal
         getLog().info( "Storing direct relationships..." );
         try
         {
-            final Set<ProjectRelationship<?>> rejected = carto.getDatabase()
-                                                              .storeRelationships( rels );
+            final Set<ProjectRelationship<?>> rejected = graph.storeRelationships( rels );
 
-            getLog().info( "The following direct relationships were rejected:\n\n  " + join( rejected, "\n  " ) + "\n\n("
-                               + ( rels.size() - rejected.size() ) + " were accepted)" );
+            getLog().info( "The following direct relationships were rejected:\n\n  " + join( rejected, "\n  " )
+                               + "\n\n(" + ( rels.size() - rejected.size() ) + " were accepted)" );
         }
-        catch ( final CartoDataException e )
+        catch ( final RelationshipGraphException e )
         {
-            throw new MojoExecutionException( "Failed to store direct project relationships in depgraph database: " + e.getMessage(), e );
+            throw new MojoExecutionException( "Failed to store direct project relationships in depgraph database: "
+                + e.getMessage(), e );
         }
     }
 
@@ -308,7 +331,8 @@ public abstract class AbstractDepgraphGoal
             }
             catch ( final IOException e )
             {
-                throw new MojoExecutionException( "Failed to write output to file: " + output + ". Reason: " + e.getMessage(), e );
+                throw new MojoExecutionException( "Failed to write output to file: " + output + ". Reason: "
+                    + e.getMessage(), e );
             }
         }
     }
@@ -354,7 +378,8 @@ public abstract class AbstractDepgraphGoal
         }
         catch ( final URISyntaxException e )
         {
-            throw new MojoExecutionException( "Cannot configure discovery for: " + refs + ". Try -X for more information." );
+            throw new MojoExecutionException( "Cannot configure discovery for: " + refs
+                + ". Try -X for more information." );
         }
 
         final Set<ProjectRelationship<?>> rels = new HashSet<ProjectRelationship<?>>();
@@ -369,16 +394,18 @@ public abstract class AbstractDepgraphGoal
             DiscoveryResult result;
             try
             {
-                result = discoverer.discoverRelationships( projectRef, config );
+                result = discoverer.discoverRelationships( projectRef, graph, config );
             }
             catch ( final CartoDataException e )
             {
-                throw new MojoExecutionException( "Cannot discover direct relationships for: " + projectRef + ": " + e.getMessage(), e );
+                throw new MojoExecutionException( "Cannot discover direct relationships for: " + projectRef + ": "
+                    + e.getMessage(), e );
             }
 
             if ( result == null )
             {
-                throw new MojoExecutionException( "Cannot discover direct relationships for: " + projectRef + ". Try -X for more information." );
+                throw new MojoExecutionException( "Cannot discover direct relationships for: " + projectRef
+                    + ". Try -X for more information." );
             }
 
             for ( final ProjectRelationship<?> rel : result.getAcceptedRelationships() )
@@ -408,7 +435,8 @@ public abstract class AbstractDepgraphGoal
                 }
             }
 
-            final ProjectVersionRef projectRef = new ProjectVersionRef( project.getGroupId(), project.getArtifactId(), project.getVersion() );
+            final ProjectVersionRef projectRef =
+                new ProjectVersionRef( project.getGroupId(), project.getArtifactId(), project.getVersion() );
             roots.add( projectRef );
 
             final List<Dependency> deps = project.getDependencies();
@@ -421,14 +449,16 @@ public abstract class AbstractDepgraphGoal
             }
             catch ( final URISyntaxException e )
             {
-                throw new MojoExecutionException( "Failed to construct dummy local URI to use as the source of the current project in the depgraph: "
-                    + e.getMessage(), e );
+                throw new MojoExecutionException(
+                                                  "Failed to construct dummy local URI to use as the source of the current project in the depgraph: "
+                                                      + e.getMessage(), e );
             }
 
             final int index = 0;
             for ( final Dependency dep : deps )
             {
-                final ProjectVersionRef depRef = new ProjectVersionRef( dep.getGroupId(), dep.getArtifactId(), dep.getVersion() );
+                final ProjectVersionRef depRef =
+                    new ProjectVersionRef( dep.getGroupId(), dep.getArtifactId(), dep.getVersion() );
 
                 //                roots.add( depRef );
 
@@ -442,7 +472,8 @@ public abstract class AbstractDepgraphGoal
                     }
                 }
 
-                rootRels.add( new DependencyRelationship( localUri, projectRef, new ArtifactRef( depRef, dep.getType(), dep.getClassifier(),
+                rootRels.add( new DependencyRelationship( localUri, projectRef, new ArtifactRef( depRef, dep.getType(),
+                                                                                                 dep.getClassifier(),
                                                                                                  dep.isOptional() ),
                                                           DependencyScope.getScope( dep.getScope() ), index, false,
                                                           excludes.toArray( new ProjectRef[excludes.size()] ) ) );
@@ -457,7 +488,8 @@ public abstract class AbstractDepgraphGoal
                 {
                     if ( "pom".equals( dep.getType() ) && "import".equals( dep.getScope() ) )
                     {
-                        final ProjectVersionRef depRef = new ProjectVersionRef( dep.getGroupId(), dep.getArtifactId(), dep.getVersion() );
+                        final ProjectVersionRef depRef =
+                            new ProjectVersionRef( dep.getGroupId(), dep.getArtifactId(), dep.getVersion() );
                         rootRels.add( new BomRelationship( localUri, projectRef, depRef, i++ ) );
                     }
                 }
@@ -467,7 +499,8 @@ public abstract class AbstractDepgraphGoal
             MavenProject parent = project.getParent();
             while ( parent != null )
             {
-                final ProjectVersionRef parentRef = new ProjectVersionRef( parent.getGroupId(), parent.getArtifactId(), parent.getVersion() );
+                final ProjectVersionRef parentRef =
+                    new ProjectVersionRef( parent.getGroupId(), parent.getArtifactId(), parent.getVersion() );
 
                 rootRels.add( new ParentRelationship( localUri, projectRef, parentRef ) );
 
@@ -515,11 +548,9 @@ public abstract class AbstractDepgraphGoal
         final Map<String, Set<ProjectVersionRef>> labels = new HashMap<String, Set<ProjectVersionRef>>();
         labels.put( "ROOT", roots );
 
-        labels.put( "NOT-RESOLVED", carto.getDatabase()
-                                         .getAllIncompleteSubgraphs() );
+        labels.put( "NOT-RESOLVED", graph.getAllIncompleteSubgraphs() );
 
-        labels.put( "VARIABLE", carto.getDatabase()
-                                     .getAllVariableSubgraphs() );
+        labels.put( "VARIABLE", graph.getAllVariableSubgraphs() );
 
         return labels;
     }
@@ -541,7 +572,7 @@ public abstract class AbstractDepgraphGoal
                                                                                     useLocalRepo ? session.getLocalRepository() : null );
 
 //            cartoBuilder = new CartographerBuilder( WORKSPACE_ID, resolverDir, 4, new JungWorkspaceFactory() )
-            cartoBuilder = new CartographerBuilder( WORKSPACE_ID, resolverDir, 4, new FileNeo4jWorkspaceFactory( dbDir, true ) )
+            cartoBuilder = new CartographerBuilder( resolverDir, 4, new FileNeo4jConnectionFactory( dbDir, true ) )
                                 .withLocationExpander( mavenLocations )
                                 .withSourceManager( mavenLocations )
                                 .withDefaultTransports();
@@ -549,14 +580,7 @@ public abstract class AbstractDepgraphGoal
             carto = cartoBuilder.build();
             /* @formatter:on */
 
-            presets = new PresetSelector( carto.getDatabase() );
-
-            carto.getDatabase()
-                 .setCurrentWorkspace( WORKSPACE_ID );
-
-            workspace = carto.getDatabase()
-                             .getCurrentWorkspace();
-
+            presets = new PresetSelector();
         }
         catch ( final CartoDataException e )
         {

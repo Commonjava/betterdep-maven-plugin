@@ -89,7 +89,7 @@ public class DiffGoal
             final GraphDescription t = new GraphDescription( filter, toGavs );
 
             final GraphDifference<ProjectRelationship<?>> diff = carto.getCalculator()
-                                                                      .difference( f, t );
+                                                                      .difference( f, t, WORKSPACE_ID );
 
             final StringBuilder sb = new StringBuilder();
 
@@ -121,7 +121,8 @@ public class DiffGoal
         }
         catch ( final CartoDataException e )
         {
-            throw new MojoExecutionException( "Failed to retrieve depgraph for roots: " + roots + ". Reason: " + e.getMessage(), e );
+            throw new MojoExecutionException( "Failed to retrieve depgraph for roots: " + roots + ". Reason: "
+                + e.getMessage(), e );
         }
     }
 

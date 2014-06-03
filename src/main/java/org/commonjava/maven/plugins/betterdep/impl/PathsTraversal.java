@@ -21,7 +21,6 @@ import org.commonjava.maven.atlas.graph.filter.OrFilter;
 import org.commonjava.maven.atlas.graph.filter.ProjectRelationshipFilter;
 import org.commonjava.maven.atlas.graph.rel.ProjectRelationship;
 import org.commonjava.maven.atlas.graph.traverse.AbstractTraversal;
-import org.commonjava.maven.atlas.graph.traverse.ProjectNetTraversal;
 import org.commonjava.maven.atlas.ident.DependencyScope;
 import org.commonjava.maven.atlas.ident.ref.ProjectRef;
 
@@ -50,7 +49,7 @@ public class PathsTraversal
     }
 
     @Override
-    public boolean preCheck( final ProjectRelationship<?> relationship, final List<ProjectRelationship<?>> path, final int pass )
+    public boolean preCheck( final ProjectRelationship<?> relationship, final List<ProjectRelationship<?>> path )
     {
         final ProjectRef dRef = relationship.getDeclaring()
                                             .asProjectRef();
@@ -83,7 +82,8 @@ public class PathsTraversal
                 }
                 else
                 {
-                    final List<ProjectRelationshipFilter> filters = new ArrayList<ProjectRelationshipFilter>( f.getFilters() );
+                    final List<ProjectRelationshipFilter> filters =
+                        new ArrayList<ProjectRelationshipFilter>( f.getFilters() );
                     filters.add( child );
                     cache.put( tRef, new OrFilter( filters ) );
                 }

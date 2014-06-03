@@ -23,7 +23,7 @@ import java.util.Set;
 
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.artifact.repository.ArtifactRepositoryPolicy;
-import org.commonjava.maven.atlas.graph.workspace.GraphWorkspace;
+import org.commonjava.maven.atlas.graph.ViewParams;
 import org.commonjava.maven.cartographer.data.CartoDataException;
 import org.commonjava.maven.cartographer.discover.DiscoverySourceManager;
 import org.commonjava.maven.galley.TransferException;
@@ -58,7 +58,8 @@ public class MavenLocationExpander
 
     private final Logger logger = LoggerFactory.getLogger( getClass() );
 
-    public MavenLocationExpander( final List<Location> customLocations, final List<ArtifactRepository> artifactRepositories,
+    public MavenLocationExpander( final List<Location> customLocations,
+                                  final List<ArtifactRepository> artifactRepositories,
                                   final ArtifactRepository localRepository )
         throws MalformedURLException, URISyntaxException
     {
@@ -90,8 +91,8 @@ public class MavenLocationExpander
             {
                 final ArtifactRepositoryPolicy releases = repo.getReleases();
                 final ArtifactRepositoryPolicy snapshots = repo.getSnapshots();
-                locs.add( new SimpleHttpLocation( url, url, snapshots == null ? false : snapshots.isEnabled(), releases == null ? true
-                                : releases.isEnabled(), true, false, -1, null ) );
+                locs.add( new SimpleHttpLocation( url, url, snapshots == null ? false : snapshots.isEnabled(),
+                                                  releases == null ? true : releases.isEnabled(), true, false, -1, null ) );
             }
         }
 
@@ -145,11 +146,14 @@ public class MavenLocationExpander
     public VirtualResource expand( final Resource resource )
         throws TransferException
     {
-        final List<Location> result = new ArrayList<Location>();
         if ( resource instanceof ConcreteResource )
         {
-            final Location loc = ( (ConcreteResource) resource ).getLocation();
+            final ConcreteResource cr = (ConcreteResource) resource;
+            final Location loc = cr.getLocation();
+
             logger.info( "Expanding: {}", loc );
+
+            final List<Location> result = new ArrayList<Location>();
             if ( EXPANSION_TARGET.equals( loc.getUri() ) )
             {
                 result.addAll( this.locations );
@@ -158,24 +162,35 @@ public class MavenLocationExpander
             {
                 result.add( loc );
             }
+
+            return new VirtualResource( result, cr.getPath() );
         }
         else
         {
-            for ( final Location loc : ( (VirtualResource) resource ).getLocations() )
+            final List<ConcreteResource> expanded = new ArrayList<ConcreteResource>();
+            for ( final ConcreteResource cr : (VirtualResource) resource )
             {
+                final Location loc = cr.getLocation();
                 logger.info( "Expanding: {}", loc );
+
+                final List<Location> locations = new ArrayList<Location>();
                 if ( EXPANSION_TARGET.equals( loc.getUri() ) )
                 {
-                    result.addAll( this.locations );
+                    locations.addAll( this.locations );
                 }
                 else
                 {
-                    result.add( loc );
+                    locations.add( loc );
+                }
+
+                for ( final Location location : locations )
+                {
+                    expanded.add( new ConcreteResource( location, cr.getPath() ) );
                 }
             }
-        }
 
-        return new VirtualResource( result, resource.getPath() );
+            return new VirtualResource( expanded );
+        }
     }
 
     @Override
@@ -225,56 +240,113 @@ public class MavenLocationExpander
     }
 
     @Override
-    public boolean activateWorkspaceSources( final GraphWorkspace ws, final String... sources )
+    public boolean activateWorkspaceSources( final ViewParams params, final String... sources )
         throws CartoDataException
     {
-        final int initialCount = ws.getActiveSources()
-                                   .size();
+        final int initialCount = params.getActiveSources()
+                                       .size();
+
         for ( final String loc : sources )
         {
             if ( EXPANSION_TARGET.equals( loc ) )
             {
                 try
                 {
-                    ws.addActiveSource( new URI( LOCAL_URI ) );
+                    params.addActiveSource( new URI( LOCAL_URI ) );
                 }
                 catch ( final URISyntaxException e )
                 {
-                    throw new CartoDataException( "Failed to construct URI from: '%s'. Reason: %s", e, LOCAL_URI, e.getMessage() );
+                    throw new CartoDataException( "Failed to construct URI from: '%s'. Reason: %s", e, LOCAL_URI,
+                                                  e.getMessage() );
                 }
 
                 try
                 {
-                    ws.addActiveSource( new URI( EXPANSION_TARGET ) );
+                    params.addActiveSource( new URI( EXPANSION_TARGET ) );
                 }
                 catch ( final URISyntaxException e )
                 {
-                    throw new CartoDataException( "Failed to construct URI from: '%s'. Reason: %s", e, EXPANSION_TARGET, e.getMessage() );
+                    throw new CartoDataException( "Failed to construct URI from: '%s'. Reason: %s", e,
+                                                  EXPANSION_TARGET, e.getMessage() );
                 }
 
-                ws.addActiveSources( locationUris );
+                params.addActiveSources( locationUris );
             }
             else
             {
                 try
                 {
-                    ws.addActiveSource( new URI( loc ) );
+                    params.addActiveSource( new URI( loc ) );
                 }
                 catch ( final URISyntaxException e )
                 {
-                    throw new CartoDataException( "Failed to construct URI from: '%s'. Reason: %s", e, loc, e.getMessage() );
+                    throw new CartoDataException( "Failed to construct URI from: '%s'. Reason: %s", e, loc,
+                                                  e.getMessage() );
                 }
             }
         }
 
-        return ws.getActiveSources()
-                 .size() > initialCount;
+        return params.getActiveSources()
+                     .size() > initialCount;
     }
 
     @Override
     public String getFormatHint()
     {
         return EXPANSION_TARGET + " or a valid http/file URL";
+    }
+
+    @Override
+    public boolean activateWorkspaceSources( final ViewParams params, final Collection<? extends Location> locations )
+        throws CartoDataException
+    {
+        final int initialCount = params.getActiveSources()
+                                       .size();
+
+        for ( final Location location : locations )
+        {
+            final String loc = location.getUri();
+
+            if ( EXPANSION_TARGET.equals( loc ) )
+            {
+                try
+                {
+                    params.addActiveSource( new URI( LOCAL_URI ) );
+                }
+                catch ( final URISyntaxException e )
+                {
+                    throw new CartoDataException( "Failed to construct URI from: '%s'. Reason: %s", e, LOCAL_URI,
+                                                  e.getMessage() );
+                }
+
+                try
+                {
+                    params.addActiveSource( new URI( EXPANSION_TARGET ) );
+                }
+                catch ( final URISyntaxException e )
+                {
+                    throw new CartoDataException( "Failed to construct URI from: '%s'. Reason: %s", e,
+                                                  EXPANSION_TARGET, e.getMessage() );
+                }
+
+                params.addActiveSources( locationUris );
+            }
+            else
+            {
+                try
+                {
+                    params.addActiveSource( new URI( loc ) );
+                }
+                catch ( final URISyntaxException e )
+                {
+                    throw new CartoDataException( "Failed to construct URI from: '%s'. Reason: %s", e, loc,
+                                                  e.getMessage() );
+                }
+            }
+        }
+
+        return params.getActiveSources()
+                     .size() > initialCount;
     }
 
 }

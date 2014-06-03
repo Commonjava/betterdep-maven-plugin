@@ -23,13 +23,11 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
-import org.commonjava.maven.atlas.graph.model.EProjectWeb;
+import org.commonjava.maven.atlas.graph.RelationshipGraphException;
 import org.commonjava.maven.atlas.graph.rel.ProjectRelationship;
 import org.commonjava.maven.atlas.graph.rel.RelationshipPathComparator;
-import org.commonjava.maven.atlas.graph.spi.GraphDriverException;
 import org.commonjava.maven.atlas.ident.ref.ProjectRef;
 import org.commonjava.maven.atlas.ident.ref.ProjectVersionRef;
-import org.commonjava.maven.cartographer.data.CartoDataException;
 import org.commonjava.maven.plugins.betterdep.impl.PathsTraversal;
 
 /**
@@ -84,52 +82,43 @@ public class PathsGoal
 
         getLog().info( "Resolving paths to:\n\n  " + join( toGas, "\n  " ) + "\n\nIn scope: " + scope + "\n" );
 
-        try
+        final PathsTraversal paths = new PathsTraversal( scope, toGas );
+        for ( final ProjectVersionRef root : roots )
         {
-            final EProjectWeb web = carto.getDatabase()
-                                         .getProjectWeb( roots.toArray( new ProjectVersionRef[roots.size()] ) );
-
-            final PathsTraversal paths = new PathsTraversal( scope, toGas );
-            for ( final ProjectVersionRef root : roots )
+            try
             {
-                try
-                {
-                    web.traverse( root, paths );
-                }
-                catch ( final GraphDriverException e )
-                {
-                    throw new MojoExecutionException( "Failed to traverse '" + root + "' looking for paths to: " + toGas + ". Reason: "
-                        + e.getMessage(), e );
-                }
+                graph.traverse( root, paths );
             }
-
-            final List<List<ProjectRelationship<?>>> discoveredPaths = new ArrayList<List<ProjectRelationship<?>>>( paths.getDiscoveredPaths() );
-            final StringBuilder result = new StringBuilder();
-
-            if ( discoveredPaths.isEmpty() )
+            catch ( final RelationshipGraphException e )
             {
-                result.append( "\n\nNo paths found!\n\n" );
+                throw new MojoExecutionException( "Failed to traverse '" + root + "' looking for paths to: " + toGas
+                    + ". Reason: " + e.getMessage(), e );
             }
-            else
-            {
-                Collections.sort( discoveredPaths, RelationshipPathComparator.INSTANCE );
-                result.append( "Found " )
-                      .append( discoveredPaths.size() )
-                      .append( " paths:\n\n" );
-
-                for ( final List<ProjectRelationship<?>> path : discoveredPaths )
-                {
-                    printPath( result, path );
-                }
-                result.append( "\n\n" );
-            }
-
-            write( result );
         }
-        catch ( final CartoDataException e )
+
+        final List<List<ProjectRelationship<?>>> discoveredPaths =
+            new ArrayList<List<ProjectRelationship<?>>>( paths.getDiscoveredPaths() );
+        final StringBuilder result = new StringBuilder();
+
+        if ( discoveredPaths.isEmpty() )
         {
-            throw new MojoExecutionException( "Failed to retrieve depgraph for roots: " + roots + ". Reason: " + e.getMessage(), e );
+            result.append( "\n\nNo paths found!\n\n" );
         }
+        else
+        {
+            Collections.sort( discoveredPaths, RelationshipPathComparator.INSTANCE );
+            result.append( "Found " )
+                  .append( discoveredPaths.size() )
+                  .append( " paths:\n\n" );
+
+            for ( final List<ProjectRelationship<?>> path : discoveredPaths )
+            {
+                printPath( result, path );
+            }
+            result.append( "\n\n" );
+        }
+
+        write( result );
     }
 
     private void printPath( final StringBuilder result, final List<ProjectRelationship<?>> path )
