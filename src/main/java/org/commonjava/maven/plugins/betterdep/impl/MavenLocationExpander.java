@@ -92,7 +92,7 @@ public class MavenLocationExpander
                 final ArtifactRepositoryPolicy releases = repo.getReleases();
                 final ArtifactRepositoryPolicy snapshots = repo.getSnapshots();
                 locs.add( new SimpleHttpLocation( url, url, snapshots == null ? false : snapshots.isEnabled(),
-                                                  releases == null ? true : releases.isEnabled(), true, false, -1, null ) );
+                                                  releases == null ? true : releases.isEnabled(), true, false, null ) );
             }
         }
 
