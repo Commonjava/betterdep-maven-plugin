@@ -14,7 +14,7 @@
   <parent>
     <groupId>org.commonjava</groupId>
     <artifactId>commonjava</artifactId>
-    <version>3</version>
+    <version>8-SNAPSHOT</version>
   </parent>
 
   <groupId>org.commonjava.maven.plugins</groupId>
@@ -24,20 +24,20 @@
 
   <name>betterdep-maven-plugin</name>
   <description>Better results than the maven-dependency-plugin offers for troubleshooting output.</description>
-  <url>http://github.com/jdcasey/betterdep-maven-plugin</url>
+  <url>http://github.com/Commonjava/betterdep-maven-plugin</url>
   
   <scm>
-    <connection>scm:git:https://github.com/jdcasey/betterdep-maven-plugin.git</connection>
-    <developerConnection>scm:git:https://github.com/jdcasey/betterdep-maven-plugin.git</developerConnection>
-    <url>https://github.com/jdcasey/betterdep-maven-plugin</url>
+    <connection>scm:git:https://github.com/Commonjava/betterdep-maven-plugin.git</connection>
+    <developerConnection>scm:git:https://github.com/Commonjava/betterdep-maven-plugin.git</developerConnection>
+    <url>https://github.com/Commonjava/betterdep-maven-plugin</url>
   </scm>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <atlasVersion>0.13.0-SNAPSHOT</atlasVersion>
-    <galleyVersion>0.5.1-SNAPSHOT</galleyVersion>
-    <cartoVersion>0.7.0-SNAPSHOT</cartoVersion>
-    <bomVersion>10</bomVersion>
+    <atlasVersion>0.14.0</atlasVersion>
+    <galleyVersion>0.8.1-SNAPSHOT</galleyVersion>
+    <cartoVersion>0.9.1-SNAPSHOT</cartoVersion>
+    <bomVersion>16</bomVersion>
   </properties>
 
   <dependencyManagement>
