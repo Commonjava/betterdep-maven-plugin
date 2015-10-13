@@ -10,8 +10,56 @@
  ******************************************************************************/
 package org.commonjava.maven.plugins.betterdep;
 
-import static org.apache.commons.lang.StringUtils.join;
-import static org.commonjava.maven.atlas.ident.util.IdentityUtils.projectVersion;
+import org.apache.commons.io.FileUtils;
+import org.apache.maven.artifact.repository.ArtifactRepository;
+import org.apache.maven.execution.MavenSession;
+import org.apache.maven.model.Dependency;
+import org.apache.maven.model.DependencyManagement;
+import org.apache.maven.model.Exclusion;
+import org.apache.maven.model.Profile;
+import org.apache.maven.monitor.logging.DefaultLog;
+import org.apache.maven.plugin.Mojo;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugin.logging.Log;
+import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.project.MavenProject;
+import org.codehaus.plexus.logging.console.ConsoleLogger;
+import org.commonjava.cartographer.CartoDataException;
+import org.commonjava.cartographer.Cartographer;
+import org.commonjava.cartographer.CartographerCoreBuilder;
+import org.commonjava.cartographer.graph.discover.DiscoveryConfig;
+import org.commonjava.cartographer.graph.discover.DiscoveryResult;
+import org.commonjava.cartographer.graph.discover.patch.DepgraphPatcher;
+import org.commonjava.cartographer.graph.preset.CommonPresetParameters;
+import org.commonjava.cartographer.graph.preset.PresetSelector;
+import org.commonjava.cartographer.request.GraphComposition;
+import org.commonjava.cartographer.request.GraphDescription;
+import org.commonjava.cartographer.spi.graph.discover.ProjectRelationshipDiscoverer;
+import org.commonjava.maven.atlas.graph.RelationshipGraph;
+import org.commonjava.maven.atlas.graph.RelationshipGraphException;
+import org.commonjava.maven.atlas.graph.RelationshipGraphFactory;
+import org.commonjava.maven.atlas.graph.ViewParams;
+import org.commonjava.maven.atlas.graph.filter.ProjectRelationshipFilter;
+import org.commonjava.maven.atlas.graph.mutate.ManagedDependencyMutator;
+import org.commonjava.maven.atlas.graph.rel.BomRelationship;
+import org.commonjava.maven.atlas.graph.rel.DependencyRelationship;
+import org.commonjava.maven.atlas.graph.rel.ParentRelationship;
+import org.commonjava.maven.atlas.graph.rel.ProjectRelationship;
+import org.commonjava.maven.atlas.graph.rel.SimpleBomRelationship;
+import org.commonjava.maven.atlas.graph.rel.SimpleDependencyRelationship;
+import org.commonjava.maven.atlas.graph.rel.SimpleParentRelationship;
+import org.commonjava.maven.atlas.graph.spi.RelationshipGraphConnectionFactory;
+import org.commonjava.maven.atlas.graph.spi.neo4j.FileNeo4jConnectionFactory;
+import org.commonjava.maven.atlas.graph.util.RelationshipUtils;
+import org.commonjava.maven.atlas.ident.DependencyScope;
+import org.commonjava.maven.atlas.ident.ref.ProjectRef;
+import org.commonjava.maven.atlas.ident.ref.ProjectVersionRef;
+import org.commonjava.maven.atlas.ident.ref.SimpleArtifactRef;
+import org.commonjava.maven.atlas.ident.ref.SimpleProjectRef;
+import org.commonjava.maven.atlas.ident.ref.SimpleProjectVersionRef;
+import org.commonjava.maven.galley.model.Location;
+import org.commonjava.maven.galley.model.SimpleLocation;
+import org.commonjava.maven.plugins.betterdep.impl.MavenLocationExpander;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -30,50 +78,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.maven.artifact.repository.ArtifactRepository;
-import org.apache.maven.execution.MavenSession;
-import org.apache.maven.model.Dependency;
-import org.apache.maven.model.DependencyManagement;
-import org.apache.maven.model.Exclusion;
-import org.apache.maven.model.Profile;
-import org.apache.maven.monitor.logging.DefaultLog;
-import org.apache.maven.plugin.Mojo;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.logging.Log;
-import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.maven.project.MavenProject;
-import org.codehaus.plexus.logging.console.ConsoleLogger;
-import org.commonjava.maven.atlas.graph.RelationshipGraph;
-import org.commonjava.maven.atlas.graph.RelationshipGraphException;
-import org.commonjava.maven.atlas.graph.ViewParams;
-import org.commonjava.maven.atlas.graph.filter.ProjectRelationshipFilter;
-import org.commonjava.maven.atlas.graph.mutate.ManagedDependencyMutator;
-import org.commonjava.maven.atlas.graph.rel.BomRelationship;
-import org.commonjava.maven.atlas.graph.rel.DependencyRelationship;
-import org.commonjava.maven.atlas.graph.rel.ParentRelationship;
-import org.commonjava.maven.atlas.graph.rel.ProjectRelationship;
-import org.commonjava.maven.atlas.graph.spi.neo4j.FileNeo4jConnectionFactory;
-import org.commonjava.maven.atlas.graph.util.RelationshipUtils;
-import org.commonjava.maven.atlas.ident.DependencyScope;
-import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
-import org.commonjava.maven.atlas.ident.ref.ProjectRef;
-import org.commonjava.maven.atlas.ident.ref.ProjectVersionRef;
-import org.commonjava.maven.cartographer.Cartographer;
-import org.commonjava.maven.cartographer.CartographerBuilder;
-import org.commonjava.maven.cartographer.data.CartoDataException;
-import org.commonjava.maven.cartographer.discover.DefaultDiscoveryConfig;
-import org.commonjava.maven.cartographer.discover.DiscoveryResult;
-import org.commonjava.maven.cartographer.discover.ProjectRelationshipDiscoverer;
-import org.commonjava.maven.cartographer.discover.post.patch.DepgraphPatcher;
-import org.commonjava.maven.cartographer.dto.GraphComposition;
-import org.commonjava.maven.cartographer.dto.GraphDescription;
-import org.commonjava.maven.cartographer.dto.ResolverRecipe;
-import org.commonjava.maven.cartographer.preset.CommonPresetParameters;
-import org.commonjava.maven.cartographer.preset.PresetSelector;
-import org.commonjava.maven.galley.model.Location;
-import org.commonjava.maven.galley.model.SimpleLocation;
-import org.commonjava.maven.plugins.betterdep.impl.MavenLocationExpander;
+import static org.apache.commons.lang.StringUtils.join;
+import static org.commonjava.maven.atlas.ident.util.IdentityUtils.projectVersion;
 
 /**
  * Abstract goal that takes care of setting up {@link Cartographer} and associated
@@ -87,6 +93,8 @@ public abstract class AbstractDepgraphGoal
 {
 
     public static final String WORKSPACE_ID = "betterdep";
+
+    public static final String MUTATOR = "managed-dependency";
 
     /**
      * Write generated output to this file. Usually optional (except for 'repozip' 
@@ -114,7 +122,7 @@ public abstract class AbstractDepgraphGoal
     private String fromProjects;
 
     /**
-     * Specify a list of URLs from which to resolve the dependency graph and any
+     * Specify a list of URLs from which to graph the dependency graph and any
      * artifacts needed to generate the goal's output.
      */
     @Parameter( property = "in" )
@@ -124,7 +132,7 @@ public abstract class AbstractDepgraphGoal
      * Temporary directory that will hold resolved POMs and other artifacts during
      * graph resolution and other activities.
      */
-    // FIXME Explicit use of 'target/' is bad, but without a project available ${project.build.directory} doesn't resolve.
+    // FIXME Explicit use of 'target/' is bad, but without a project available ${project.build.directory} doesn't graph.
     @Parameter( defaultValue = "target/dep/resolved", readonly = true, required = true )
     private File resolverDir;
 
@@ -133,7 +141,7 @@ public abstract class AbstractDepgraphGoal
      * speed up successive calls to betterdep goals if it is not erased between
      * invocations.
      */
-    // FIXME Explicit use of 'target/' is bad, but without a project available ${project.build.directory} doesn't resolve.
+    // FIXME Explicit use of 'target/' is bad, but without a project available ${project.build.directory} doesn't graph.
     @Parameter( defaultValue = "target/dep/db", readonly = true, required = true )
     private File dbDir;
 
@@ -176,7 +184,7 @@ public abstract class AbstractDepgraphGoal
 
     protected RelationshipGraph graph;
 
-    private Set<ProjectRelationship<?>> rootRels;
+    private Set<ProjectRelationship<?, ?>> rootRels;
 
     private ProjectRelationshipDiscoverer discoverer;
 
@@ -184,11 +192,13 @@ public abstract class AbstractDepgraphGoal
 
     private List<ArtifactRepository> artifactRepositories;
 
-    protected static CartographerBuilder cartoBuilder;
+    protected static CartographerCoreBuilder cartoBuilder;
 
     protected static Cartographer carto;
 
     protected static PresetSelector presets;
+
+    private RelationshipGraphFactory graphFactory;
 
     public AbstractDepgraphGoal()
     {
@@ -198,7 +208,7 @@ public abstract class AbstractDepgraphGoal
     protected void initDepgraph( final boolean useLocalRepo )
         throws MojoExecutionException
     {
-        rootRels = new HashSet<ProjectRelationship<?>>();
+        rootRels = new HashSet<ProjectRelationship<?, ?>>();
         profiles = new HashSet<URI>();
 
         if ( inRepos != null )
@@ -238,16 +248,13 @@ public abstract class AbstractDepgraphGoal
         if ( fromProjects != null )
         {
             roots = toRefs( fromProjects );
-
             setupGraph();
-
             readFromGAVs();
         }
         else
         {
             roots = new LinkedHashSet<ProjectVersionRef>();
             readFromReactorProjects();
-
             setupGraph();
         }
 
@@ -265,26 +272,25 @@ public abstract class AbstractDepgraphGoal
     }
 
     private void setupGraph()
-        throws MojoExecutionException
+            throws MojoExecutionException
     {
         try
         {
-            graph = carto.getGraphFactory()
-                         .open( new ViewParams( WORKSPACE_ID, filter, new ManagedDependencyMutator(), roots ), true );
+            graph = graphFactory.open( new ViewParams( WORKSPACE_ID, filter, ManagedDependencyMutator.INSTANCE, roots ), true );
         }
-        catch ( final RelationshipGraphException e )
+        catch ( RelationshipGraphException e )
         {
-            throw new MojoExecutionException( "Failed to open graph: " + e.getMessage(), e );
+            throw new MojoExecutionException( "Failed to open base graph: " + e.getMessage(), e );
         }
     }
 
-    protected void storeRels( final Set<ProjectRelationship<?>> rels )
+    protected void storeRels( final Set<ProjectRelationship<?, ?>> rels )
         throws MojoExecutionException
     {
         getLog().info( "Storing direct relationships..." );
         try
         {
-            final Set<ProjectRelationship<?>> rejected = graph.storeRelationships( rels );
+            final Set<ProjectRelationship<?, ?>> rejected = graph.storeRelationships( rels );
 
             getLog().info( "The following direct relationships were rejected:\n\n  " + join( rejected, "\n  " )
                                + "\n\n(" + ( rels.size() - rejected.size() ) + " were accepted)" );
@@ -356,7 +362,7 @@ public abstract class AbstractDepgraphGoal
         rootRels = getDirectRelsFor( roots );
     }
 
-    protected Set<ProjectRelationship<?>> getDirectRelsFor( final Set<ProjectVersionRef> refs )
+    protected Set<ProjectRelationship<?, ?>> getDirectRelsFor( final Set<ProjectVersionRef> refs )
         throws MojoExecutionException
     {
         final Collection<DepgraphPatcher> patchers = cartoBuilder.getDepgraphPatchers();
@@ -369,10 +375,10 @@ public abstract class AbstractDepgraphGoal
             }
         }
 
-        final DefaultDiscoveryConfig config;
+        final DiscoveryConfig config;
         try
         {
-            config = new DefaultDiscoveryConfig( MavenLocationExpander.EXPANSION_TARGET );
+            config = new DiscoveryConfig( MavenLocationExpander.EXPANSION_TARGET );
             config.setEnabledPatchers( patcherIds );
             config.setStoreRelationships( true );
         }
@@ -382,7 +388,7 @@ public abstract class AbstractDepgraphGoal
                 + ". Try -X for more information." );
         }
 
-        final Set<ProjectRelationship<?>> rels = new HashSet<ProjectRelationship<?>>();
+        final Set<ProjectRelationship<?, ?>> rels = new HashSet<ProjectRelationship<?, ?>>();
 
         for ( final ProjectVersionRef projectRef : refs )
         {
@@ -408,7 +414,7 @@ public abstract class AbstractDepgraphGoal
                     + ". Try -X for more information." );
             }
 
-            for ( final ProjectRelationship<?> rel : result.getAcceptedRelationships() )
+            for ( final ProjectRelationship<?, ?> rel : result.getAcceptedRelationships() )
             {
                 if ( filter.accept( rel ) )
                 {
@@ -436,7 +442,7 @@ public abstract class AbstractDepgraphGoal
             }
 
             final ProjectVersionRef projectRef =
-                new ProjectVersionRef( project.getGroupId(), project.getArtifactId(), project.getVersion() );
+                new SimpleProjectVersionRef( project.getGroupId(), project.getArtifactId(), project.getVersion() );
             roots.add( projectRef );
 
             final List<Dependency> deps = project.getDependencies();
@@ -458,7 +464,7 @@ public abstract class AbstractDepgraphGoal
             for ( final Dependency dep : deps )
             {
                 final ProjectVersionRef depRef =
-                    new ProjectVersionRef( dep.getGroupId(), dep.getArtifactId(), dep.getVersion() );
+                    new SimpleProjectVersionRef( dep.getGroupId(), dep.getArtifactId(), dep.getVersion() );
 
                 //                roots.add( depRef );
 
@@ -468,11 +474,11 @@ public abstract class AbstractDepgraphGoal
                 {
                     for ( final Exclusion exclusion : exclusions )
                     {
-                        excludes.add( new ProjectRef( exclusion.getGroupId(), exclusion.getArtifactId() ) );
+                        excludes.add( new SimpleProjectRef( exclusion.getGroupId(), exclusion.getArtifactId() ) );
                     }
                 }
 
-                rootRels.add( new DependencyRelationship( localUri, projectRef, new ArtifactRef( depRef, dep.getType(),
+                rootRels.add( new SimpleDependencyRelationship( localUri, projectRef, new SimpleArtifactRef( depRef, dep.getType(),
                                                                                                  dep.getClassifier(),
                                                                                                  dep.isOptional() ),
                                                           DependencyScope.getScope( dep.getScope() ), index, false,
@@ -489,8 +495,8 @@ public abstract class AbstractDepgraphGoal
                     if ( "pom".equals( dep.getType() ) && "import".equals( dep.getScope() ) )
                     {
                         final ProjectVersionRef depRef =
-                            new ProjectVersionRef( dep.getGroupId(), dep.getArtifactId(), dep.getVersion() );
-                        rootRels.add( new BomRelationship( localUri, projectRef, depRef, i++ ) );
+                            new SimpleProjectVersionRef( dep.getGroupId(), dep.getArtifactId(), dep.getVersion() );
+                        rootRels.add( new SimpleBomRelationship( localUri, projectRef, depRef, i++ ) );
                     }
                 }
             }
@@ -500,46 +506,28 @@ public abstract class AbstractDepgraphGoal
             while ( parent != null )
             {
                 final ProjectVersionRef parentRef =
-                    new ProjectVersionRef( parent.getGroupId(), parent.getArtifactId(), parent.getVersion() );
+                    new SimpleProjectVersionRef( parent.getGroupId(), parent.getArtifactId(), parent.getVersion() );
 
-                rootRels.add( new ParentRelationship( localUri, projectRef, parentRef ) );
+                rootRels.add( new SimpleParentRelationship( localUri, projectRef, parentRef ) );
 
                 lastParent = parentRef;
                 parent = parent.getParent();
             }
 
-            rootRels.add( new ParentRelationship( localUri, lastParent ) );
+            rootRels.add( new SimpleParentRelationship( lastParent ) );
         }
 
     }
 
-    protected void resolveFromDepgraph()
-        throws MojoExecutionException
+    protected GraphComposition getComposition()
     {
-        resolveDepgraph( filter, roots );
+        return getComposition( filter, roots );
     }
 
-    protected void resolveDepgraph( final ProjectRelationshipFilter filter, final Set<ProjectVersionRef> roots )
-        throws MojoExecutionException
+    protected GraphComposition getComposition( ProjectRelationshipFilter filter, Set<ProjectVersionRef> roots )
     {
-        final GraphDescription graphDesc = new GraphDescription( filter, roots );
-        final GraphComposition comp = new GraphComposition( null, Collections.singletonList( graphDesc ) );
-        final ResolverRecipe recipe = new ResolverRecipe();
-        recipe.setGraphComposition( comp );
-        recipe.setResolve( true );
-        recipe.setWorkspaceId( WORKSPACE_ID );
-        recipe.setSourceLocation( new SimpleLocation( MavenLocationExpander.EXPANSION_TARGET ) );
-
-        getLog().info( "Resolving depgraph(s) for: " + roots + "..." );
-        try
-        {
-            carto.getResolver()
-                 .resolve( recipe );
-        }
-        catch ( final CartoDataException e )
-        {
-            throw new MojoExecutionException( "Failed to resolve graph: " + e.getMessage(), e );
-        }
+        final GraphDescription graphDesc = new GraphDescription( filter, MUTATOR, roots );
+        return new GraphComposition( null, Collections.singletonList( graphDesc ) );
     }
 
     protected Map<String, Set<ProjectVersionRef>> getLabelsMap()
@@ -572,7 +560,11 @@ public abstract class AbstractDepgraphGoal
                                                                                     useLocalRepo ? session.getLocalRepository() : null );
 
 //            cartoBuilder = new CartographerBuilder( WORKSPACE_ID, resolverDir, 4, new JungWorkspaceFactory() )
-            cartoBuilder = new CartographerBuilder( resolverDir, 4, new FileNeo4jConnectionFactory( dbDir, true ) )
+            RelationshipGraphConnectionFactory connFactory = new FileNeo4jConnectionFactory( dbDir, true );
+            graphFactory = new RelationshipGraphFactory( connFactory );
+
+            cartoBuilder = new CartographerCoreBuilder( resolverDir, connFactory )
+                    .withGraphFactory( graphFactory )
                                 .withLocationExpander( mavenLocations )
                                 .withSourceManager( mavenLocations )
                                 .withDefaultTransports();

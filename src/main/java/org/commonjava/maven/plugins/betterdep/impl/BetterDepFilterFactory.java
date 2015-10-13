@@ -13,11 +13,11 @@ package org.commonjava.maven.plugins.betterdep.impl;
 import java.util.Map;
 
 import org.commonjava.atservice.annotation.Service;
+import org.commonjava.cartographer.graph.preset.CommonPresetParameters;
+import org.commonjava.cartographer.graph.preset.PresetFactory;
+import org.commonjava.cartographer.graph.preset.PresetSelector;
 import org.commonjava.maven.atlas.graph.filter.ProjectRelationshipFilter;
 import org.commonjava.maven.atlas.ident.DependencyScope;
-import org.commonjava.maven.cartographer.preset.CommonPresetParameters;
-import org.commonjava.maven.cartographer.preset.PresetFactory;
-import org.commonjava.maven.cartographer.preset.PresetSelector;
 
 /**
  * Filter factory used to integrate the {@link BetterDepFilter} into the 

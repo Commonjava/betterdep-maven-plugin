@@ -10,22 +10,11 @@
  ******************************************************************************/
 package org.commonjava.maven.plugins.betterdep.impl;
 
-import java.io.File;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
-
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.artifact.repository.ArtifactRepositoryPolicy;
+import org.commonjava.cartographer.CartoDataException;
+import org.commonjava.cartographer.spi.graph.discover.DiscoverySourceManager;
 import org.commonjava.maven.atlas.graph.ViewParams;
-import org.commonjava.maven.cartographer.data.CartoDataException;
-import org.commonjava.maven.cartographer.discover.DiscoverySourceManager;
 import org.commonjava.maven.galley.TransferException;
 import org.commonjava.maven.galley.model.ConcreteResource;
 import org.commonjava.maven.galley.model.Location;
@@ -36,6 +25,17 @@ import org.commonjava.maven.galley.spi.transport.LocationExpander;
 import org.commonjava.maven.galley.transport.htcli.model.SimpleHttpLocation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Galley {@link LocationExpander} implementation that expands a shorthand URI
@@ -91,8 +91,8 @@ public class MavenLocationExpander
             {
                 final ArtifactRepositoryPolicy releases = repo.getReleases();
                 final ArtifactRepositoryPolicy snapshots = repo.getSnapshots();
-                locs.add( new SimpleHttpLocation( url, url, snapshots == null ? false : snapshots.isEnabled(),
-                                                  releases == null ? true : releases.isEnabled(), true, false, null ) );
+                locs.add( new SimpleHttpLocation( url, url, snapshots != null && snapshots.isEnabled(),
+                                                  releases == null || releases.isEnabled(), true, false, null ) );
             }
         }
 
