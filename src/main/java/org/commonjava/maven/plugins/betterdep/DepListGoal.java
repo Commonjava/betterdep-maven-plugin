@@ -20,8 +20,10 @@ import org.apache.commons.io.IOUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
+import org.commonjava.cartographer.CartoDataException;
+import org.commonjava.cartographer.CartoRequestException;
+import org.commonjava.cartographer.request.RepositoryContentRequest;
 import org.commonjava.maven.atlas.ident.ref.ProjectVersionRef;
-import org.commonjava.maven.cartographer.data.CartoDataException;
 import org.commonjava.maven.plugins.betterdep.impl.BetterDepRelationshipPrinter;
 
 /**
@@ -37,7 +39,7 @@ import org.commonjava.maven.plugins.betterdep.impl.BetterDepRelationshipPrinter;
  */
 @Mojo( name = "list", requiresProject = false, aggregator = true, threadSafe = true )
 public class DepListGoal
-    extends AbstractDepgraphGoal
+    extends AbstractRepoGoal
 {
 
     private static boolean HAS_RUN = false;
@@ -55,7 +57,6 @@ public class DepListGoal
         HAS_RUN = true;
 
         initDepgraph( true );
-        resolveFromDepgraph();
 
         if ( output == null )
         {
@@ -68,16 +69,12 @@ public class DepListGoal
             writer = getWriter();
             final PrintWriter pw = new PrintWriter( writer );
 
-            final Map<String, Set<ProjectVersionRef>> labels = getLabelsMap();
-
-            final BetterDepRelationshipPrinter printer = new BetterDepRelationshipPrinter();
-
-            carto.getRenderer()
-                 .depList( graph, labels, printer, pw );
+            RepositoryContentRequest request = repoContentRequest();
+            carto.getRenderer().depList( request, pw );
 
             getLog().info( "Dependency list(s) written to: " + output );
         }
-        catch ( final CartoDataException e )
+        catch ( final CartoDataException | CartoRequestException e )
         {
             throw new MojoExecutionException( "Failed to render dependency list: " + e.getMessage(), e );
         }

@@ -14,7 +14,7 @@
   <parent>
     <groupId>org.commonjava</groupId>
     <artifactId>commonjava</artifactId>
-    <version>8-SNAPSHOT</version>
+    <version>9</version>
   </parent>
 
   <groupId>org.commonjava.maven.plugins</groupId>
@@ -34,10 +34,11 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <atlasVersion>0.14.0</atlasVersion>
-    <galleyVersion>0.8.1-SNAPSHOT</galleyVersion>
-    <cartoVersion>0.9.1-SNAPSHOT</cartoVersion>
+    <atlasVersion>0.15.2</atlasVersion>
+    <galleyVersion>0.10.2</galleyVersion>
+    <cartoVersion>0.10.2</cartoVersion>
     <bomVersion>16</bomVersion>
+    <javaVersion>1.8</javaVersion>
   </properties>
 
   <dependencyManagement>
@@ -133,6 +134,18 @@
         <version>0.1</version>
         <scope>provided</scope>
       </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+      <version>1.0.12</version>
+      <scope>provided</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
     </dependencies>
   </dependencyManagement>
   
@@ -205,8 +218,8 @@
         <plugin>
           <artifactId>maven-compiler-plugin</artifactId>
           <configuration>
-            <source>1.6</source>
-            <target>1.6</target>
+            <source>${javaVersion}</source>
+            <target>${javaVersion}</target>
             <annotationProcessors>
               <annotationProcessor>org.commonjava.atservice.processor.ServiceAnnotationProcessor</annotationProcessor>
             </annotationProcessors>
@@ -217,6 +230,7 @@
     <plugins>
       <plugin>
         <artifactId>maven-plugin-plugin</artifactId>
+        <version>3.4</version>
       </plugin>
     </plugins>
   </build>

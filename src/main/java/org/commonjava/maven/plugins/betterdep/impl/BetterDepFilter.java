@@ -56,7 +56,7 @@ public class BetterDepFilter
     }
 
     @Override
-    public boolean accept( final ProjectRelationship<?> rel )
+    public boolean accept( final ProjectRelationship<?, ?> rel )
     {
         // ACCEPT all BOMs, parents.
         switch ( rel.getType() )
@@ -94,7 +94,7 @@ public class BetterDepFilter
     }
 
     @Override
-    public ProjectRelationshipFilter getChildFilter( final ProjectRelationship<?> parent )
+    public ProjectRelationshipFilter getChildFilter( final ProjectRelationship<?, ?> parent )
     {
         final DependencyScope nextScope = ScopeTransitivity.maven.getChildFor( scope );
         boolean construct = nextScope != scope;

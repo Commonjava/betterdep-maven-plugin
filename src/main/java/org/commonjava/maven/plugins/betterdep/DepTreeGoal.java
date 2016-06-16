@@ -20,8 +20,11 @@ import org.apache.commons.io.IOUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+import org.commonjava.cartographer.CartoDataException;
+import org.commonjava.cartographer.CartoRequestException;
+import org.commonjava.cartographer.request.RepositoryContentRequest;
 import org.commonjava.maven.atlas.ident.ref.ProjectVersionRef;
-import org.commonjava.maven.cartographer.data.CartoDataException;
 import org.commonjava.maven.plugins.betterdep.impl.BetterDepRelationshipPrinter;
 
 /**
@@ -38,10 +41,13 @@ import org.commonjava.maven.plugins.betterdep.impl.BetterDepRelationshipPrinter;
  */
 @Mojo( name = "tree", requiresProject = false, aggregator = true, threadSafe = true )
 public class DepTreeGoal
-    extends AbstractDepgraphGoal
+    extends AbstractRepoGoal
 {
 
     private static boolean HAS_RUN = false;
+
+    @Parameter( defaultValue = "true", property = "collapseTransitives" )
+    private boolean collapseTransitives;
 
     @Override
     public void execute()
@@ -56,7 +62,6 @@ public class DepTreeGoal
         HAS_RUN = true;
 
         initDepgraph( true );
-        resolveFromDepgraph();
 
         if ( output == null )
         {
@@ -69,18 +74,12 @@ public class DepTreeGoal
             writer = getWriter();
             final PrintWriter pw = new PrintWriter( writer );
 
-            final Map<String, Set<ProjectVersionRef>> labels = getLabelsMap();
-
-            final Set<ProjectVersionRef> missing = graph.getAllIncompleteSubgraphs();
-
-            final BetterDepRelationshipPrinter printer = new BetterDepRelationshipPrinter( missing );
-
-            carto.getRenderer()
-                 .depTree( graph, false, labels, printer, pw );
+            RepositoryContentRequest request = repoContentRequest();
+            carto.getRenderer().depTree( request, collapseTransitives, pw );
 
             getLog().info( "Dependency tree(s) written to: " + output );
         }
-        catch ( final CartoDataException e )
+        catch ( final CartoDataException | CartoRequestException e )
         {
             throw new MojoExecutionException( "Failed to render dependency tree: " + e.getMessage(), e );
         }

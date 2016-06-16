@@ -122,7 +122,7 @@ public class RepoZipGoal
 
             getLog().info( "Starting batch retrieval of " + entries.size() + " artifacts." );
             TransferBatch batch = new TransferBatch( entries );
-            batch = cartoBuilder.getTransferMgr()
+            batch = cartoBuilder.getTransferManager()
                                 .batchRetrieve( batch );
 
             getLog().info( "Retrieved " + batch.getTransfers()

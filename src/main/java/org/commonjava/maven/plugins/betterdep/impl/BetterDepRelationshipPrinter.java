@@ -41,7 +41,7 @@ public class BetterDepRelationshipPrinter
     }
 
     @Override
-    public void print( final ProjectRelationship<?> relationship, final ProjectVersionRef selectedTarget,
+    public void print( final ProjectRelationship<?, ?> relationship, final ProjectVersionRef selectedTarget,
                        final PrintWriter writer,
                        final Map<String, Set<ProjectVersionRef>> labels, final int depth, final String indent )
     {

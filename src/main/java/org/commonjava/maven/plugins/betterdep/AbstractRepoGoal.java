@@ -4,7 +4,7 @@
  * are made available under the terms of the GNU Public License v3.0
  * which accompanies this distribution, and is available at
  * http://www.gnu.org/licenses/gpl.html
- * 
+ *
  * Contributors:
  *     Red Hat, Inc. - initial API and implementation
  ******************************************************************************/
@@ -20,13 +20,14 @@ import java.util.Set;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Parameter;
+import org.commonjava.cartographer.CartoDataException;
+import org.commonjava.cartographer.CartoRequestException;
+import org.commonjava.cartographer.request.ExtraCT;
+import org.commonjava.cartographer.request.GraphComposition;
+import org.commonjava.cartographer.request.GraphDescription;
+import org.commonjava.cartographer.request.RepositoryContentRequest;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.commonjava.maven.atlas.ident.ref.ProjectVersionRef;
-import org.commonjava.maven.cartographer.data.CartoDataException;
-import org.commonjava.maven.cartographer.dto.ExtraCT;
-import org.commonjava.maven.cartographer.dto.GraphComposition;
-import org.commonjava.maven.cartographer.dto.GraphDescription;
-import org.commonjava.maven.cartographer.dto.RepositoryContentRecipe;
 import org.commonjava.maven.galley.model.ConcreteResource;
 import org.commonjava.maven.galley.model.SimpleLocation;
 import org.commonjava.maven.plugins.betterdep.impl.MavenLocationExpander;
@@ -35,11 +36,11 @@ import org.commonjava.maven.plugins.betterdep.impl.MavenLocationExpander;
  * Abstract goal that takes care of resolving repository contents given a list of
  * root GAVs and a filter (among other options). The logic here builds on the
  * {@link AbstractDepgraphGoal}'s process for resolving the dependency graph itself.
- * 
+ *
  * @author jdcasey
  */
 public abstract class AbstractRepoGoal
-    extends AbstractDepgraphGoal
+        extends AbstractDepgraphGoal
 {
 
     private static final Set<String> DEFAULT_METAS;
@@ -78,7 +79,7 @@ public abstract class AbstractRepoGoal
     /**
      * Comma-delimited list of meta-file extensions to look for and include. If
      * not specified, this will include:
-     * 
+     *
      * <ul>
      *   <li>sha1</li>
      *   <li>md5</li>
@@ -94,35 +95,43 @@ public abstract class AbstractRepoGoal
      * Comma-delimited list of 'type[:classifier]' specs for extra attached 
      * artifacts to include. If not specified, this list will include 'javadoc:jar' 
      * and 'sources:jar'.
-     * 
+     *
      * <p><b>NOTE:</b> It's also possible to use -Dextras=*:*.</p>  
      */
     @Parameter( property = "extras" )
     private String extras;
 
-    protected Map<ProjectVersionRef, Map<ArtifactRef, ConcreteResource>> resolveRepoContents()
-        throws MojoExecutionException
-    {
-        initDepgraph( false );
-        final RepositoryContentRecipe recipe = new RepositoryContentRecipe();
+    protected RepositoryContentRequest repoContentRequest(){
+        final RepositoryContentRequest recipe = new RepositoryContentRequest();
 
         // TODO: What about more complex graph compositions, like subtractions or unions with different filters?
-        recipe.setGraphComposition( new GraphComposition( null, Collections.singletonList( new GraphDescription( filter, roots ) ) ) );
+        recipe.setGraphComposition( new GraphComposition( null, Collections.singletonList(
+                new GraphDescription( filter, MUTATOR, roots ) ) ) );
         recipe.setMetas( getMetas() );
         recipe.setExtras( getExtras() );
         recipe.setResolve( true );
         recipe.setWorkspaceId( WORKSPACE_ID );
         recipe.setSourceLocation( new SimpleLocation( MavenLocationExpander.EXPANSION_TARGET ) );
 
+        return recipe;
+    }
+
+    protected Map<ProjectVersionRef, Map<ArtifactRef, ConcreteResource>> resolveRepoContents()
+            throws MojoExecutionException
+    {
+        initDepgraph( false );
+
         Map<ProjectVersionRef, Map<ArtifactRef, ConcreteResource>> contents;
+        RepositoryContentRequest request = repoContentRequest();
         try
         {
-            contents = carto.getResolver()
-                            .resolveRepositoryContents( recipe );
+            contents = carto.getResolver().resolveRepositoryContents( request );
         }
-        catch ( final CartoDataException e )
+        catch ( final CartoDataException | CartoRequestException e )
         {
-            throw new MojoExecutionException( String.format( "Failed to resolve repository contents for: %s. Reason: %s", recipe, e.getMessage() ), e );
+            throw new MojoExecutionException(
+                    String.format( "Failed to graph repository contents for: %s. Reason: %s", request, e.getMessage() ),
+                    e );
         }
 
         return contents;

@@ -40,7 +40,7 @@ public class PathsTraversal
 
     private final Map<ProjectRef, OrFilter> cache = new HashMap<ProjectRef, OrFilter>();
 
-    private final Set<List<ProjectRelationship<?>>> paths = new HashSet<List<ProjectRelationship<?>>>();
+    private final Set<List<ProjectRelationship<?, ?>>> paths = new HashSet<List<ProjectRelationship<?, ?>>>();
 
     public PathsTraversal( final DependencyScope scope, final Set<ProjectRef> toGas )
     {
@@ -49,7 +49,7 @@ public class PathsTraversal
     }
 
     @Override
-    public boolean preCheck( final ProjectRelationship<?> relationship, final List<ProjectRelationship<?>> path )
+    public boolean preCheck( final ProjectRelationship<?, ?> relationship, final List<ProjectRelationship<?, ?>> path )
     {
         final ProjectRef dRef = relationship.getDeclaring()
                                             .asProjectRef();
@@ -67,7 +67,7 @@ public class PathsTraversal
 
             if ( to.contains( tRef ) )
             {
-                final List<ProjectRelationship<?>> realPath = new ArrayList<ProjectRelationship<?>>( path );
+                final List<ProjectRelationship<?, ?>> realPath = new ArrayList<ProjectRelationship<?, ?>>( path );
                 realPath.add( relationship );
                 paths.add( realPath );
                 return false;
@@ -95,7 +95,7 @@ public class PathsTraversal
         return false;
     }
 
-    public Set<List<ProjectRelationship<?>>> getDiscoveredPaths()
+    public Set<List<ProjectRelationship<?, ?>>> getDiscoveredPaths()
     {
         return paths;
     }

@@ -4,7 +4,7 @@
  * are made available under the terms of the GNU Public License v3.0
  * which accompanies this distribution, and is available at
  * http://www.gnu.org/licenses/gpl.html
- * 
+ *
  * Contributors:
  *     Red Hat, Inc. - initial API and implementation
  ******************************************************************************/
@@ -22,31 +22,44 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
+import org.commonjava.cartographer.CartoDataException;
+import org.commonjava.cartographer.CartoRequestException;
+import org.commonjava.cartographer.graph.discover.patch.DepgraphPatcher;
+import org.commonjava.cartographer.graph.discover.patch.DepgraphPatcherConstants;
+import org.commonjava.cartographer.graph.discover.patch.PatcherSupport;
+import org.commonjava.cartographer.request.GraphAnalysisRequest;
+import org.commonjava.cartographer.request.GraphComposition;
+import org.commonjava.cartographer.request.GraphDescription;
+import org.commonjava.cartographer.request.MultiGraphRequest;
+import org.commonjava.cartographer.request.build.GraphAnalysisRequestBuilder;
+import org.commonjava.cartographer.request.build.GraphCompositionBuilder;
+import org.commonjava.cartographer.request.build.MultiGraphRequestBuilder;
+import org.commonjava.cartographer.result.GraphDifference;
 import org.commonjava.maven.atlas.graph.rel.ProjectRelationship;
 import org.commonjava.maven.atlas.ident.ref.ProjectVersionRef;
-import org.commonjava.maven.cartographer.data.CartoDataException;
-import org.commonjava.maven.cartographer.dto.GraphDescription;
-import org.commonjava.maven.cartographer.dto.GraphDifference;
+import org.commonjava.maven.plugins.betterdep.impl.MavenLocationExpander;
 
 /**
  * Generates pseudo-diff style output that highlights the differences between two
  * dependency graphs. The first (old) graph is generated from either the current projects,
  * or else the -Dfrom=GAV[,GAV]* parameter. The second (new) graph is generated 
  * from the -Dto=GAV[,GAV]* parameter.
- * 
+ *
  * This goal is most useful to determine the changes in the dependency graph from
  * one release of a project to the next. 
- * 
+ *
  * @author jdcasey
  */
 @Mojo( name = "diff", requiresProject = false, aggregator = true, threadSafe = true )
 public class DiffGoal
-    extends AbstractDepgraphGoal
+        extends AbstractDepgraphGoal
 {
 
     public enum DiffFormat
     {
-        brief, full, targets;
+        brief,
+        full,
+        targets
     }
 
     private static boolean HAS_RUN = false;
@@ -64,7 +77,7 @@ public class DiffGoal
 
     @Override
     public void execute()
-        throws MojoExecutionException, MojoFailureException
+            throws MojoExecutionException, MojoFailureException
     {
         if ( HAS_RUN )
         {
@@ -75,21 +88,29 @@ public class DiffGoal
         HAS_RUN = true;
 
         initDepgraph( true );
-        resolveFromDepgraph();
 
         toGavs = toRefs( toProjects );
-        getDirectRelsFor( toGavs );
 
-        resolveDepgraph( filter, toGavs );
-
-        getLog().info( "Resolving difference vs :\n\n  " + join( toGavs, "\n  " ) + "\n\nUsing scope: " + scope + "\n" );
+        getLog().info(
+                "Resolving difference vs :\n\n  " + join( toGavs, "\n  " ) + "\n\nUsing scope: " + scope + "\n" );
         try
         {
-            final GraphDescription f = new GraphDescription( filter, roots );
-            final GraphDescription t = new GraphDescription( filter, toGavs );
+            final GraphDescription f = new GraphDescription( filter, MUTATOR, roots );
+            final GraphDescription t = new GraphDescription( filter, MUTATOR, toGavs );
 
-            final GraphDifference<ProjectRelationship<?>> diff = carto.getCalculator()
-                                                                      .difference( f, t, WORKSPACE_ID );
+            GraphComposition comp =
+                    GraphCompositionBuilder.newGraphCompositionBuilder().withGraph( f ).withGraph( t ).build();
+            MultiGraphRequest multiRequest = new MultiGraphRequest();
+            multiRequest.setGraphComposition( comp );
+            multiRequest.setWorkspaceId( WORKSPACE_ID );
+            multiRequest.setResolve( true );
+            multiRequest.setPatcherIds( DepgraphPatcherConstants.ALL_PATCHERS );
+            multiRequest.setSource( MavenLocationExpander.EXPANSION_TARGET );
+
+            GraphAnalysisRequest request =
+                    GraphAnalysisRequestBuilder.newAnalysisRequestBuilder().withGraphRequest( multiRequest ).build();
+
+            GraphDifference<ProjectRelationship<?, ?>> diff = carto.getCalculator().difference( request );
 
             final StringBuilder sb = new StringBuilder();
 
@@ -105,32 +126,30 @@ public class DiffGoal
 
             for ( final String line : rm )
             {
-                sb.append( "\n- " )
-                  .append( line );
+                sb.append( "\n- " ).append( line );
             }
 
             for ( final String line : added )
             {
-                sb.append( "\n+ " )
-                  .append( line );
+                sb.append( "\n+ " ).append( line );
             }
 
             sb.append( "\n\n" );
 
             write( sb );
         }
-        catch ( final CartoDataException e )
+        catch ( final CartoDataException | CartoRequestException e )
         {
-            throw new MojoExecutionException( "Failed to retrieve depgraph for roots: " + roots + ". Reason: "
-                + e.getMessage(), e );
+            throw new MojoExecutionException(
+                    "Failed to retrieve depgraph for roots: " + roots + ". Reason: " + e.getMessage(), e );
         }
     }
 
-    private List<String> printRels( final Set<ProjectRelationship<?>> rels )
+    private List<String> printRels( final Set<ProjectRelationship<?, ?>> rels )
     {
         final Set<String> result = new LinkedHashSet<String>();
         final StringBuilder sb = new StringBuilder();
-        for ( final ProjectRelationship<?> rel : rels )
+        for ( final ProjectRelationship<?, ?> rel : rels )
         {
             sb.setLength( 0 );
             final DiffFormat fmt = format == null ? DiffFormat.brief : DiffFormat.valueOf( format.toLowerCase() );
@@ -143,9 +162,7 @@ public class DiffGoal
                 }
                 case brief:
                 {
-                    sb.append( rel.getDeclaring() )
-                      .append( " -> " )
-                      .append( rel.getTarget() );
+                    sb.append( rel.getDeclaring() ).append( " -> " ).append( rel.getTarget() );
                     break;
                 }
                 case targets:
